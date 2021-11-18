@@ -3,7 +3,7 @@
 
 #define L2_BYTES MB(1)
 
-#define REG_TYPE 2		// 0: scalar, 1,2,3: sse, avx2, avx512
+#define REG_TYPE 3		// 0: scalar, 1,2,3: sse, avx2, avx512
 #define KEY_TYPE 0		// 0: 32, 1: 64, 2: 64+64
 
 /**
@@ -22,6 +22,7 @@
 	_MT_L1_BUFF_N		# MTREE internal buffer size at L1
 	_MT_L2_BUFF_N		# MTREE internal buffer size at L2
 	_MTREE_NREG			# number of registers in MTREE merge
+	_MTREE_MIN_K		# minimum merge-way to avoid mem bottleneck	--> get from bench_mtree:
 */
 
 

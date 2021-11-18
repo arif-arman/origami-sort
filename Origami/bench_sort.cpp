@@ -11,22 +11,24 @@ void sort_bench(ui writer_type = MT) {
 	print_size<Reg, Item>();
 	const ui Itemsize = sizeof(Item);
 	ui64 size = GB(1LLU);
-	int repeat = 3;
+	constexpr ui repeat = 3;
 	ui64 n_items = size / Itemsize;
 
 	printf("Running origami-sort --> n: %llu ...\n", n_items);
 
 	Item* data = (Item*)VirtualAlloc(NULL, size, MEM_COMMIT, PAGE_READWRITE);
-	Item* data_back = (Item*)VirtualAlloc(NULL, size, MEM_COMMIT, PAGE_READWRITE);
 	Item* end = data + n_items;
 	Item* output = (Item*)VirtualAlloc(NULL, size, MEM_COMMIT, PAGE_READWRITE);
+	Item* data_back = nullptr;
 
 	datagen::Writer<Item> writer;
 	writer.generate(data, n_items, writer_type);
 	memset(output, 0, size);
-	memcpy(data_back, data, size);
 
-
+	if (repeat > 1) {
+		data_back = (Item*)VirtualAlloc(NULL, size, MEM_COMMIT, PAGE_READWRITE);
+		memcpy(data_back, data, size);
+	}
 #ifdef STD_CORRECTNESS
 	printf("Sorting with std::sort ... ");
 	Item* sorted = (Item*)VirtualAlloc(NULL, size, MEM_COMMIT, PAGE_READWRITE); 
@@ -41,7 +43,8 @@ void sort_bench(ui writer_type = MT) {
 
 	double avgS = 0;
 	FOR(i, repeat, 1) {
-		memcpy(data, data_back, size);
+		if (repeat > 1) memcpy(data, data_back, size);
+
 		Item* data2 = data;
 		Item* end2 = data2 + n_items;
 		Item* output2 = output;
@@ -53,7 +56,6 @@ void sort_bench(ui writer_type = MT) {
 
 		printf("\r                               \r");
 
-		// fix output ptr
 		double el = ELAPSED(st1, en1);
 		double sp = double(n_items) / el / 1e6;
 		avgS += sp;
@@ -81,9 +83,11 @@ void sort_bench(ui writer_type = MT) {
 	if (data[13] & 0x123 == output[13]) printf("%u %u\n", data[13], output[13]);
 	PRINT_DASH(50);
 
-	VirtualFree(data, 0, MEM_RELEASE);
-	VirtualFree(data_back, 0, MEM_RELEASE);			
-	VirtualFree(output, 0, MEM_RELEASE);
+	VFREE(data);
+	VFREE(output);
+
+	if (repeat > 1) VFREE(data_back);
+
 #ifdef STD_CORRECTNESS
 	VirtualFree(sorted, 0, MEM_RELEASE);
 #endif 
