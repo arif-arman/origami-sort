@@ -60,7 +60,7 @@ namespace origami_merge_tree {
 
 	// external
 	template <typename Reg, typename Item>
-	NOINLINE void merge_leaf_to_internal(Item** _loadFrom, Item** _opposite, Reg& a0, Reg& a1, Item* outbuf, Item* endA, Item* endB, Item** _endoutput, ui& exhaust, ui base_idx, origami_utils::IOHelper* IO) {
+	FORCEINLINE void merge_leaf_to_internal(Item** _loadFrom, Item** _opposite, Reg& a0, Reg& a1, Item* outbuf, Item* endA, Item* endB, Item** _endoutput, ui& exhaust, ui base_idx, origami_utils::IOHelper* IO) {
 		//printf("Merging leaf to internal @ %lu ... \n", base_idx);
 		// exhaust 0 -> both children have Items; 1 -> loadFrom empty; 2 -> opposite empty i.e. all empty
 		constexpr ui ITEMS_PER_REG = sizeof(Reg) / sizeof(Item);
@@ -350,7 +350,7 @@ namespace origami_merge_tree {
 
 	// external
 	template <typename Reg, typename Item>
-	NOINLINE void merge_root_unaligned(Item** _loadFrom, Item** _opposite, Reg& a1, Item** _output, Item* endA, Item* endB, ui exhaust0, ui exhaust1, Item* outputEnd, origami_utils::IOHelper* IO) {
+	FORCEINLINE void merge_root_unaligned(Item** _loadFrom, Item** _opposite, Reg& a1, Item** _output, Item* endA, Item* endB, ui exhaust0, ui exhaust1, Item* outputEnd, origami_utils::IOHelper* IO) {
 		constexpr ui ITEMS_PER_REG = sizeof(Reg) / sizeof(Item);
 		Item* loadFrom = *_loadFrom;
 		Item* opposite = *_opposite;
@@ -4725,7 +4725,7 @@ public:
 
 	// trying to reuse tree
 	template <typename Reg, typename Item, bool external = false>
-	class MergeReuseTree {
+	class MergeTree {
 	public:
 		Merge4Way<Reg, Item, external>** nodes = nullptr;
 		Item* bufptrs[MTREE_MAX_LEVEL * MTREE_MAX_WAY], * bufptrsEnd[MTREE_MAX_LEVEL * MTREE_MAX_WAY];
@@ -4737,16 +4737,16 @@ public:
 		Item _min, _shift, _mask;
 #endif 
 
-		FORCEINLINE virtual void merge_reuse_init(ui WAY, Item* buf, ui buf_n, ui l2_buf_n, origami_utils::IOHelper* _IO = nullptr) = 0;
-		FORCEINLINE virtual void merge_reuse_cleanup() = 0;
-		FORCEINLINE virtual void merge_reuse(Item* A, Item* C, ui64 chunk, ui buf_n, ui l2_buf_n, Item* buf, ui WAY) = 0;
-		FORCEINLINE virtual void merge_reuse(Item** _X, Item** _endX, Item* C, ui64 n, ui buf_n, ui l2_buf_n, Item* buf, ui WAY) = 0;
+		FORCEINLINE virtual void merge_init(ui WAY, Item* buf, ui buf_n, ui l2_buf_n, origami_utils::IOHelper* _IO = nullptr) = 0;
+		FORCEINLINE virtual void merge_cleanup() = 0;
+		FORCEINLINE virtual void merge(Item* A, Item* C, ui64 chunk, ui buf_n, ui l2_buf_n, Item* buf, ui WAY) = 0;
+		FORCEINLINE virtual void merge(Item** _X, Item** _endX, Item* C, ui64 n, ui buf_n, ui l2_buf_n, Item* buf, ui WAY) = 0;
 	};
 
 	template <typename Reg, typename Item, bool external = false>
-	class MergeReuseTreeEven : public MergeReuseTree<Reg, Item, external> {
+	class MergeTreeEven : public MergeTree<Reg, Item, external> {
 	public:
-		FORCEINLINE void merge_reuse_init(ui WAY, Item* buf, ui buf_n, ui l2_buf_n, origami_utils::IOHelper* _IO = nullptr) {
+		FORCEINLINE void merge_init(ui WAY, Item* buf, ui buf_n, ui l2_buf_n, origami_utils::IOHelper* _IO = nullptr) {
 			this->LEVELS = (ui)(log2(WAY)) + 1;
 			this->LEAF_LEVEL = this->LEVELS - 1;
 			this->LEVELS_4WAY = this->LEVELS >> 1;
@@ -4782,12 +4782,12 @@ public:
 			this->IO = _IO;
 		}
 
-		FORCEINLINE void merge_reuse_cleanup() {
+		FORCEINLINE void merge_cleanup() {
 			FOR(i, this->NODES, 1) delete this->nodes[i];
 			delete[] this->nodes;
 		}
 
-		FORCEINLINE void merge_reuse(Item* A, Item* C, ui64 chunk, ui buf_n, ui l2_buf_n, Item* buf, ui WAY) {
+		FORCEINLINE void merge(Item* A, Item* C, ui64 chunk, ui buf_n, ui l2_buf_n, Item* buf, ui WAY) {
 			this->prior_unalign_items = 0;
 			this->post_unalign_items = 0;
 			//printf("Merging: [%llX %llX] to [%llX %llX], Tot: %llu\n", A, A + chunk * WAY, C, C + chunk * WAY, chunk * WAY);
@@ -4961,7 +4961,7 @@ public:
 			}
 		}
 
-		NOINLINE void merge_reuse(Item** _X, Item** _endX, Item* C, ui64 n, ui buf_n, ui l2_buf_n, Item* buf, ui WAY) {
+		FORCEINLINE void merge(Item** _X, Item** _endX, Item* C, ui64 n, ui buf_n, ui l2_buf_n, Item* buf, ui WAY) {
 			// debug verify correctness of partitioning
 			/*Item* O = C;
 			FOR(i, WAY, 1) {
@@ -5178,12 +5178,11 @@ public:
 				nodes[0]->opposite1 = opposite1;
 			}
 		}
-
 	};
 	// for merge-tree that is not power of 4-way (32-way, 128-way etc.)
 
 	template <typename Reg, typename Item, bool external = false>
-	class MergeReuseTreeOdd : public MergeReuseTree<Reg, Item, external> {
+	class MergeTreeOdd : public MergeTree<Reg, Item, external> {
 	public:
 		//Merge4Way<Reg, Item>** nodes_left = nullptr, ** nodes_right = nullptr;
 		//Item* bufptrs1[MAX_LEVEL * MAX_WAY], * bufptrsEnd1[MAX_LEVEL * MAX_WAY];
@@ -5192,7 +5191,7 @@ public:
 		//ui LEVELS, LEAF_LEVEL, ROOT_LEVEL = 0;
 		//ui LEVELS_4WAY, NODES;
 
-		FORCEINLINE void merge_reuse_init(ui WAY, Item* buf, ui buf_n, ui l2_buf_n, origami_utils::IOHelper* _IO = nullptr) override {
+		FORCEINLINE void merge_init(ui WAY, Item* buf, ui buf_n, ui l2_buf_n, origami_utils::IOHelper* _IO = nullptr) override {
 			Merge4Way<Reg, Item, external>** nodes_left = this->nodes;
 			Item** bufptrs1 = this->bufptrs, ** bufptrsEnd1 = this->bufptrsEnd;
 			const ui HALF_WAY = WAY >> 1;
@@ -5265,7 +5264,7 @@ public:
 			this->IO = _IO;
 		}
 
-		FORCEINLINE void merge_reuse_cleanup() override {
+		FORCEINLINE void merge_cleanup() override {
 			Merge4Way<Reg, Item, external>** nodes_left = this->nodes;
 			FOR(i, this->NODES, 1) {
 				delete nodes_left[i];
@@ -5276,7 +5275,7 @@ public:
 		}
 
 		// assuming A, C address origami_utils::aligned
-		FORCEINLINE void merge_reuse(Item* A, Item* C, ui64 chunk, ui buf_n, ui l2_buf_n, Item* buf, ui WAY) override {
+		FORCEINLINE void merge(Item* A, Item* C, ui64 chunk, ui buf_n, ui l2_buf_n, Item* buf, ui WAY) override {
 			constexpr ui INC = sizeof(Reg) / sizeof(Item) * MTREE_NREG;
 			this->prior_unalign_items = 0;
 			this->post_unalign_items = 0;
@@ -5581,7 +5580,7 @@ public:
 			*/
 		}
 
-		FORCEINLINE void merge_reuse(Item** _X, Item** _endX, Item* C, ui64 n, ui buf_n, ui l2_buf_n, Item* buf, ui WAY) override {
+		FORCEINLINE void merge(Item** _X, Item** _endX, Item* C, ui64 n, ui buf_n, ui l2_buf_n, Item* buf, ui WAY) override {
 			// debug: check if lists sorted
 			/*FOR(i, WAY, 1) {
 				printf("Checking stream %u w/ %llu items ... ", i, (_endX[i] - _X[i]));

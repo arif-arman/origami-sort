@@ -1195,6 +1195,7 @@ void phase1_sort_test() {
 #endif
 
 #if REG_TYPE == 2
+#if KEY_TYPE == 0
 		using Item1 = ui;
 		print_size<Reg, Item1>();
 		InRegisterTest<Item1, Reg> irt1;
@@ -1206,7 +1207,7 @@ void phase1_sort_test() {
 		irt1.phase1_sort_sliding_test<32, 128, min(128, _P1_SWITCH)>();
 		irt1.phase1_sort_sliding_test<32, 256, min(256, _P1_SWITCH)>();
 		irt1.phase1_sort_sliding_test<64, 512, min(512, _P1_SWITCH)>();
-
+#elif KEY_TYPE == 1
 		using Item2 = i64;
 		print_size<Reg, Item2>();
 		InRegisterTest<Item2, Reg> irt2;
@@ -1216,7 +1217,7 @@ void phase1_sort_test() {
 		irt2.phase1_sort_sliding_test<32, 64, min(64, _P1_SWITCH)>();
 		irt2.phase1_sort_sliding_test<32, 128, min(128, _P1_SWITCH)>();
 		irt2.phase1_sort_sliding_test<64, 256, min(256, _P1_SWITCH)>();
-
+#else 
 		using Item3 = KeyValue<i64, i64>;
 		print_size<Reg, Item3>();
 		InRegisterTest<Item3, Reg> irt3;
@@ -1225,6 +1226,7 @@ void phase1_sort_test() {
 		irt3.phase1_sort_sliding_test<32, 32, min(32, _P1_SWITCH)>();
 		irt3.phase1_sort_sliding_test<32, 64, min(64, _P1_SWITCH)>();
 		irt3.phase1_sort_sliding_test<64, 128, min(128, _P1_SWITCH)>();
+#endif
 #endif
 
 #if REG_TYPE == 3
@@ -1285,7 +1287,7 @@ void phase2_in_register_merge_test() {
 
 template<typename Reg, typename Item, bool IN_CACHE, ui P1_NREG = _P1_NREG, ui P1_N = _P1_N, ui P1_SWITCH = _P1_SWITCH, ui P2_MERGE_UNROLL = _P2_MERGE_UNROLL, ui P2_MERGE_NREG_1x = _P2_MERGE_NREG_1x, ui P2_MERGE_NREG_2x = _P2_MERGE_NREG_2x, ui P2_MERGE_NREG_3x = _P2_MERGE_NREG_3x, ui P3_MERGE_UNROLL = _P3_MERGE_UNROLL, ui P3_MERGE_NREG_1x = _P3_MERGE_NREG_1x, ui P3_MERGE_NREG_2x = _P3_MERGE_NREG_2x, ui P3_MERGE_NREG_3x = _P3_MERGE_NREG_3x>
 void sort_sliding_test(ui64 sort_n = 64, ui writer_type = 1) {
-	//#define STD_CORRECTNESS
+//#define STD_CORRECTNESS
 	print_size<Reg, Item>();
 
 	const ui Itemsize = sizeof(Item);
@@ -1312,7 +1314,6 @@ void sort_sliding_test(ui64 sort_n = 64, ui writer_type = 1) {
 	Item* end = data + n_items;
 	Item* output = (Item*)VirtualAlloc(NULL, size, MEM_COMMIT, PAGE_READWRITE);
 
-	// datagen::random_writer<Item>(data, n_items); // datagen::Generate(data, n_items, writer_type, Keymax); //Writer(data, n_items);
 	datagen::Writer<Item> writer;
 	writer.generate(data, n_items, writer_type);
 
@@ -1392,7 +1393,7 @@ void sort_sliding_test(ui64 sort_n = 64, ui writer_type = 1) {
 	avgS /= repeat;
 	printf("\nSpeed: %.2f M keys/sec\n", avgS);
 	// prints to prevent compiler optimizations
-	if (data[13] & 0x123 == output[13]) printf("%u %u\n", data[13], output[13]);
+	if (*((char*)data + 13) & 0x123 == *(char*)output) printf("%u %u\n", data[13], output[13]);
 	PRINT_DASH(50);
 
 	VirtualFree(data, 0, MEM_RELEASE);
@@ -1521,186 +1522,14 @@ void phase3_sort_single_thread_test(ui writer_type = 1) {
 	}
 }
 
+template <typename Reg, typename Item>
 void phase4_sortN_test(int argc, char** argv) {
-	//#define STD_CORRECTNESS
-#define REG_TYPE 2		// 0: Scalar, 1, 2, 3 -> SSE, AVX2, AVX512
-#define KEY_TYPE 0		// 0: 32, 1: 64, 2: 64+64
-
-#if REG_TYPE == 0
-#if KEY_TYPE == 0
-	using Item = ui;
-	constexpr ui P1_NREG = 8;
-	constexpr ui P1_N = 8;
-	constexpr ui P1_SWITCH = 8;
-
-	constexpr ui P2_MERGE_UNROLL = 1;
-	constexpr ui P2_MERGE_NREG_1x = 4;
-	constexpr ui P2_MERGE_NREG_2x = 1;
-	constexpr ui P2_MERGE_NREG_3x = 1;
-	constexpr ui MT_L1_BUFF_N = 4096;
-	constexpr ui MT_L2_BUFF_N = 4096;
-#elif KEY_TYPE == 1
-	// MTREE_NREG = 2
-	using Item = i64;
-	constexpr ui P1_NREG = 8;
-	constexpr ui P1_N = 8;
-	constexpr ui P1_SWITCH = 8;
-
-	constexpr ui P2_MERGE_UNROLL = 1;
-	constexpr ui P2_MERGE_NREG_1x = 4;
-	constexpr ui P2_MERGE_NREG_2x = 2;
-	constexpr ui P2_MERGE_NREG_3x = 1;
-	constexpr ui MT_L1_BUFF_N = 1024;
-	constexpr ui MT_L2_BUFF_N = 1024;
-#elif KEY_TYPE == 2
-	// MTREE_NREG = 2
-	using Item = KeyValue<i64, i64>;
-	constexpr ui P1_NREG = 16;
-	constexpr ui P1_N = 16;
-	constexpr ui P1_SWITCH = 16;
-
-	constexpr ui P2_MERGE_UNROLL = 1;
-	constexpr ui P2_MERGE_NREG_1x = 2;
-	constexpr ui P2_MERGE_NREG_2x = 2;
-	constexpr ui P2_MERGE_NREG_3x = 1;
-	constexpr ui MT_L1_BUFF_N = 1024;
-	constexpr ui MT_L2_BUFF_N = 1024;
-
-#endif
-	using Reg = Item;
-
-#elif REG_TYPE == 1
-	using Reg = sse;
-#if KEY_TYPE == 0
-	using Item = ui;
-	constexpr ui P1_NREG = 32;
-	constexpr ui P1_N = 32;
-	constexpr ui P1_SWITCH = 32;
-
-	constexpr ui P2_MERGE_UNROLL = 2;
-	constexpr ui P2_MERGE_NREG_1x = 2;
-	constexpr ui P2_MERGE_NREG_2x = 2;
-	constexpr ui P2_MERGE_NREG_3x = 2;	// c3: 1, s4: 2
-	constexpr ui MT_L1_BUFF_N = 4096;	// c3: 16384, s4: 4096
-	constexpr ui MT_L2_BUFF_N = 4096;	// c3: 16384, s4: 4096
-#elif KEY_TYPE == 1
-	// MTREE_NREG = 2
-	using Item = i64;
-	constexpr ui P1_NREG = 32;
-	constexpr ui P1_N = 32;
-	constexpr ui P1_SWITCH = 32;
-
-	constexpr ui P2_MERGE_UNROLL = 2;	// c3: 2, s4: 3
-	constexpr ui P2_MERGE_NREG_1x = 4;
-	constexpr ui P2_MERGE_NREG_2x = 2;	// c3: 2, s4: 1
-	constexpr ui P2_MERGE_NREG_3x = 1;
-	constexpr ui MT_L1_BUFF_N = 32;		// c3: 32, s4: 64
-	constexpr ui MT_L2_BUFF_N = 1024;
-#elif KEY_TYPE == 2
-	// MTREE_NREG = 2
-	using Item = KeyValue<i64, i64>;
-	constexpr ui P1_NREG = 32;
-	constexpr ui P1_N = 16;
-	constexpr ui P1_SWITCH = 16;
-
-	constexpr ui P2_MERGE_UNROLL = 2;
-	constexpr ui P2_MERGE_NREG_1x = 4;
-	constexpr ui P2_MERGE_NREG_2x = 2;
-	constexpr ui P2_MERGE_NREG_3x = 1;	// c3: 1, s4: 2
-	constexpr ui MT_L1_BUFF_N = 32;		// c3: 32, s4: 64
-	constexpr ui MT_L2_BUFF_N = 1024;
-#endif
-#elif REG_TYPE == 2
-	using Reg = avx2;
-#if KEY_TYPE == 0
-	using Item = ui;
-	constexpr ui P1_NREG = 32;
-	constexpr ui P1_N = 256;
-	constexpr ui P1_SWITCH = 64;
-
-	constexpr ui P2_MERGE_UNROLL = 2;
-	constexpr ui P2_MERGE_NREG_1x = 1;
-	constexpr ui P2_MERGE_NREG_2x = 1;
-	constexpr ui P2_MERGE_NREG_3x = 1;
-	constexpr ui MT_L1_BUFF_N = 32;
-	constexpr ui MT_L2_BUFF_N = 1024;
-#elif KEY_TYPE == 1
-	using Item = i64;
-	constexpr ui P1_NREG = 32;
-	constexpr ui P1_N = 128;
-	constexpr ui P1_SWITCH = 32;
-
-	constexpr ui P2_MERGE_UNROLL = 2;
-	constexpr ui P2_MERGE_NREG_1x = 1;
-	constexpr ui P2_MERGE_NREG_2x = 1;
-	constexpr ui P2_MERGE_NREG_3x = 1;
-	constexpr ui MT_L1_BUFF_N = 32;
-	constexpr ui MT_L2_BUFF_N = 1024;
-#elif KEY_TYPE == 2
-	using Item = KeyValue<i64, i64>;
-	constexpr ui P1_NREG = 32;
-	constexpr ui P1_N = 32;
-	constexpr ui P1_SWITCH = 32;
-
-	constexpr ui P2_MERGE_UNROLL = 2;
-	constexpr ui P2_MERGE_NREG_1x = 1;
-	constexpr ui P2_MERGE_NREG_2x = 1;
-	constexpr ui P2_MERGE_NREG_3x = 1;
-	constexpr ui MT_L1_BUFF_N = 32;
-	constexpr ui MT_L2_BUFF_N = 1024;
-#endif 
-
-#elif REG_TYPE == 3
-	using Reg = avx512;
-#if KEY_TYPE == 0
-	using Item = ui;
-	constexpr ui P1_NREG = 64;
-	constexpr ui P1_N = 1024;
-	constexpr ui P1_SWITCH = 64;
-
-	constexpr ui P2_MERGE_UNROLL = 2;
-	constexpr ui P2_MERGE_NREG_1x = 1;
-	constexpr ui P2_MERGE_NREG_2x = 1;
-	constexpr ui P2_MERGE_NREG_3x = 1;
-	constexpr ui MT_L1_BUFF_N = 32;
-	constexpr ui MT_L2_BUFF_N = 1024;
-#elif KEY_TYPE == 1
-	using Item = i64;
-	constexpr ui P1_NREG = 64;
-	constexpr ui P1_N = 512;
-	constexpr ui P1_SWITCH = 64;
-
-	constexpr ui P2_MERGE_UNROLL = 2;
-	constexpr ui P2_MERGE_NREG_1x = 1;
-	constexpr ui P2_MERGE_NREG_2x = 1;
-	constexpr ui P2_MERGE_NREG_3x = 1;
-	constexpr ui MT_L1_BUFF_N = 32;
-	constexpr ui MT_L2_BUFF_N = 1024;
-#elif KEY_TYPE == 2
-	using Item = KeyValue<i64, i64>;
-	constexpr ui P1_NREG = 128;
-	constexpr ui P1_N = 512;
-	constexpr ui P1_SWITCH = 64;
-
-	constexpr ui P2_MERGE_UNROLL = 2;
-	constexpr ui P2_MERGE_NREG_1x = 1;
-	constexpr ui P2_MERGE_NREG_2x = 1;
-	constexpr ui P2_MERGE_NREG_3x = 1;
-	constexpr ui MT_L1_BUFF_N = 32;
-	constexpr ui MT_L2_BUFF_N = 1024;
-#endif 
-#endif
-
+//#define STD_CORRECTNESS
 	constexpr ui P2_N = (L2_BYTES >> 1) / sizeof(Item);
-
-	//#define STD_CORRECTNESS
-		//ui64 size = KB(256LLU) * n_threads;  
-		//ui64 size = KB(512LLU) * n_threads;  
-		//ui64 size = MB(128LLU) * n_threads;
-
 	ui n_threads = 16;		if (argc > 1) n_threads = atoi(argv[1]);
 	ui n_cores = 8;			if (argc > 2) n_cores = atoi(argv[2]);
 	ui64 size = GB(1LLU);	if (argc > 3) size = (1LLU << atoi(argv[3])) * sizeof(Item);
+	ui min_k = 4;			if (argc > 4) min_k = atoi(argv[4]);
 	ui64 n_items = size / sizeof(Item);
 
 	hrc::time_point st, en;
@@ -1716,7 +1545,7 @@ void phase4_sortN_test(int argc, char** argv) {
 
 	//Writer(d, n_items);
 	datagen::Writer<Item> writer;
-	writer.generate(d, n_items, 1);
+	writer.generate(d, n_items, MT);
 	//memcpy(d_back, d, size);
 
 #ifdef STD_CORRECTNESS
@@ -1733,24 +1562,9 @@ void phase4_sortN_test(int argc, char** argv) {
 	memset(tmp, 0, size);
 	memset(kway_buf, 0, kway_buf_size);
 
-	printf("Sorting %llu Items using %d threads, Items per th %llu, sort_n %llu ...\n", n_items, n_threads, n_items / n_threads, n_items);
+	printf("Sorting %llu items using %d threads, %d cores ...\n", n_items, n_threads, n_cores);
 
-
-	ui n_partitions = n_threads;
-	Item* out = nullptr;
-	//constexpr ui repeat = 10;
-	//if constexpr (std::is_same<Reg, Item>::value) { 	//scalar
-	//	FOR(i, repeat, 1) {
-	//		memcpy(d, d_back, size);
-	//		hrc::time_point st = hrc::now();
-	//		out = irl_sorter::sortN_multi_thread_scalar<Item, Reg, P1_NREG, P1_N, P1_SWITCH, P2_N, P2_MERGE_UNROLL, P2_MERGE_NREG_1x, P2_MERGE_NREG_2x, P2_MERGE_NREG_3x, P2_MERGE_UNROLL, P2_MERGE_NREG_1x, P2_MERGE_NREG_2x, P2_MERGE_NREG_3x>(d, tmp, n_items, n_threads, n_cores, d_back);
-	//		hrc::time_point en = hrc::now();
-	//		el += ELAPSED_MS(st, en);
-	//	}
-	//	printf("Elapsed %.2f ms, Speed %.2f M/s\n", el, (double)n_items * repeat / el / 1e3);
-	//}
-	//else 
-	out = origami_sorter::sortN_multi_thread<Item, Reg, P1_NREG, P1_N, P1_SWITCH, P2_N, P2_MERGE_UNROLL, P2_MERGE_NREG_1x, P2_MERGE_NREG_2x, P2_MERGE_NREG_3x, MT_L1_BUFF_N, MT_L2_BUFF_N>(d, tmp, n_items, n_threads, n_cores, n_partitions, argc, argv, kway_buf);
+	Item* out = origami_sorter::sort_multi_thread<Item, Reg>(d, tmp, n_items, n_threads, n_cores, min_k, kway_buf);
 
 	printf("Checking correctness ... ");
 	// -- upto Phase 2
@@ -1790,10 +1604,10 @@ int main(int argc, char** argv) {
 
 //#define PHASE2_IN_REG_MERGE
 //#define PHASE2_SWITCH_POINT
-//#define PHASE2_SORT
+#define PHASE2_SORT
 
-#define PHASE3_SORT
-	//#define PHASE4_SORT
+//#define PHASE3_SORT
+//#define PHASE4_SORT
 
 #ifdef PHASE1_IN_REG_SORT
 	phase1_in_register_sort_test<Regtype, Itemtype>();
@@ -1841,7 +1655,8 @@ int main(int argc, char** argv) {
 
 	// Phase 4
 #ifdef PHASE4_SORT
-	phase4_sortN_test(argc, argv);
+	// bench phase 4 sort -- Table 13, 14 in paper
+	phase4_sortN_test<Regtype, Itemtype>(argc, argv);
 #endif 
 
 	system("pause");

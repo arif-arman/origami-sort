@@ -82,11 +82,11 @@ namespace origami_external_sorter {
 
 			ui l1_buff_n = 32;
 			ui l2_buff_n = 1024;
-			origami_merge_tree::MergeReuseTree<Reg, Item, true>* kway_tree = nullptr;
+			origami_merge_tree::MergeTree<Reg, Item, true>* kway_tree = nullptr;
 			ui WAY_POW = (ui)(log2(WAY));
-			if (WAY_POW & 1) kway_tree = new origami_merge_tree::MergeReuseTreeOdd<Reg, Item, true>();
-			else kway_tree = new origami_merge_tree::MergeReuseTreeEven<Reg, Item, true>();
-			kway_tree->merge_reuse_init(WAY, (Item*)treebuf, l1_buff_n, l2_buff_n, &IO);
+			if (WAY_POW & 1) kway_tree = new origami_merge_tree::MergeTreeOdd<Reg, Item, true>();
+			else kway_tree = new origami_merge_tree::MergeTreeEven<Reg, Item, true>();
+			kway_tree->merge_init(WAY, (Item*)treebuf, l1_buff_n, l2_buff_n, &IO);
 
 			// bench
 			printf("Merging, %llu bytes, %lu ways, mem: %llu bytes ... ", sort_size_bytes, WAY, mem_size);
@@ -94,12 +94,12 @@ namespace origami_external_sorter {
 			s = hrc::now();
 			FOR(i, WAY, 1)
 				IO.fill_buffer(i);
-			kway_tree->merge_reuse((Item**)IO.X, (Item**)IO.endX, (Item*)IO.out, (IO.out_buff_size / sizeof(Item)), l1_buff_n, l2_buff_n, (Item*)treebuf, WAY);
+			kway_tree->merge((Item**)IO.X, (Item**)IO.endX, (Item*)IO.out, (IO.out_buff_size / sizeof(Item)), l1_buff_n, l2_buff_n, (Item*)treebuf, WAY);
 			e = hrc::now();
 			double el = ELAPSED_MS(s, e);
 			printf("done in %.2f ms @ %.2f M/s\n", el, (sort_size_bytes / sizeof(Item)) / el / 1e3);
 
-			kway_tree->merge_reuse_cleanup();
+			kway_tree->merge_cleanup();
 			delete kway_tree;
 
 			cleanup_fileptrs();

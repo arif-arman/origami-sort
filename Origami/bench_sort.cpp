@@ -6,20 +6,34 @@
 #include <iostream>
 
 template<typename Reg, typename Item>
-void sort_bench(ui writer_type = MT) {
+void sort_bench(ui writer_type, int argc, char** argv) {
 //#define STD_CORRECTNESS
+	ui size_pow = atoi(argv[1]);
+	ui n_threads = atoi(argv[2]);
+	ui n_cores, min_k;
+	if (n_threads > 1) {
+		n_cores = atoi(argv[3]);
+		min_k = atoi(argv[4]);
+	}
+
 	print_size<Reg, Item>();
 	const ui Itemsize = sizeof(Item);
-	ui64 size = GB(1LLU);
+	ui64 size = (1LLU << size_pow);
 	constexpr ui repeat = 3;
 	ui64 n_items = size / Itemsize;
 
 	printf("Running origami-sort --> n: %llu ...\n", n_items);
 
-	Item* data = (Item*)VirtualAlloc(NULL, size, MEM_COMMIT, PAGE_READWRITE);
+	Item* data = (Item*)VALLOC(size);
 	Item* end = data + n_items;
-	Item* output = (Item*)VirtualAlloc(NULL, size, MEM_COMMIT, PAGE_READWRITE);
+	Item* output = (Item*)VALLOC(size);
 	Item* data_back = nullptr;
+	Item* kway_buf = nullptr;
+	ui64 kway_buf_size = MB(256);
+	if (n_threads > 1) {
+		kway_buf = (Item*)VALLOC(kway_buf_size);
+		memset(kway_buf, 0, kway_buf_size);
+	}
 
 	datagen::Writer<Item> writer;
 	writer.generate(data, n_items, writer_type);
@@ -43,7 +57,12 @@ void sort_bench(ui writer_type = MT) {
 
 	double avgS = 0;
 	FOR(i, repeat, 1) {
-		if (repeat > 1) memcpy(data, data_back, size);
+		if (repeat > 0) {
+			memcpy(data, data_back, size);
+			memset(output, 0, size);
+			if (n_threads > 1) 
+				memset(kway_buf, 0, kway_buf_size);
+		}
 
 		Item* data2 = data;
 		Item* end2 = data2 + n_items;
@@ -51,7 +70,14 @@ void sort_bench(ui writer_type = MT) {
 		Item* o = data;
 
 		hrc::time_point st1 = hrc::now();
-		o = origami_sorter::sort_single_thread<Item, Reg>(data2, output2, end2, n_items);
+		switch (n_threads) {
+		case 1:
+			o = origami_sorter::sort_single_thread<Item, Reg>(data2, output2, end2, n_items);
+			break;
+		default:
+			o = origami_sorter::sort_multi_thread<Item, Reg>(data2, output2, n_items, n_threads, n_cores, min_k, kway_buf);
+		}
+		
 		hrc::time_point en1 = hrc::now();
 
 		printf("\r                               \r");
@@ -70,7 +96,7 @@ void sort_bench(ui writer_type = MT) {
 #else 
 		if (!SortCorrectnessChecker(o, n_items)) {
 			printf("Correctness error @ %llu\n", i);
-			break;
+			//break;
 			//system("pause");
 			//exit(1);
 		}
@@ -80,13 +106,14 @@ void sort_bench(ui writer_type = MT) {
 	avgS /= repeat;
 	printf("\nSpeed: %.2f M keys/sec\n", avgS);
 	// prints to prevent compiler optimizations
-	if (data[13] & 0x123 == output[13]) printf("%u %u\n", data[13], output[13]);
+	if (*((int*)data + 3) & 0x1234 == *(int*)output) printf("%u %u\n", data[13], output[13]);
 	PRINT_DASH(50);
 
 	VFREE(data);
 	VFREE(output);
 
 	if (repeat > 1) VFREE(data_back);
+	if (n_threads > 1) VFREE(kway_buf);
 
 #ifdef STD_CORRECTNESS
 	VirtualFree(sorted, 0, MEM_RELEASE);
@@ -94,10 +121,10 @@ void sort_bench(ui writer_type = MT) {
 #undef STD_CORRECTNESS
 }
 
-int main() {
+int main(int argc, char** argv) {
 
 	// single thread sort test
-	sort_bench<Regtype, Itemtype>(MT);
+	sort_bench<Regtype, Itemtype>(MT, argc, argv);
 	system("pause");
 
 	return 0;

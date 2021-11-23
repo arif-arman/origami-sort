@@ -4,7 +4,7 @@
 #define L2_BYTES MB(1)
 
 #define REG_TYPE 3		// 0: scalar, 1,2,3: sse, avx2, avx512
-#define KEY_TYPE 0		// 0: 32, 1: 64, 2: 64+64
+#define KEY_TYPE 2		// 0: 32, 1: 64, 2: 64+64
 
 /**
 *	Required parameters -----------------------
@@ -22,7 +22,6 @@
 	_MT_L1_BUFF_N		# MTREE internal buffer size at L1
 	_MT_L2_BUFF_N		# MTREE internal buffer size at L2
 	_MTREE_NREG			# number of registers in MTREE merge
-	_MTREE_MIN_K		# minimum merge-way to avoid mem bottleneck	--> get from bench_mtree:
 */
 
 
@@ -41,6 +40,9 @@
 #define _P3_MERGE_NREG_1x	4
 #define _P3_MERGE_NREG_2x	1
 #define _P3_MERGE_NREG_3x	1
+#define _MT_L1_BUFF_N		4096
+#define _MT_L2_BUFF_N		4096
+#define _MTREE_NREG			1
 
 #elif KEY_TYPE == 1
 	using Itemtype = i64;
@@ -55,6 +57,9 @@
 #define _P3_MERGE_NREG_1x	4
 #define _P3_MERGE_NREG_2x	1
 #define _P3_MERGE_NREG_3x	1
+#define _MT_L1_BUFF_N		1024
+#define _MT_L2_BUFF_N		1024
+#define _MTREE_NREG			1
 
 #else 
 	using Itemtype = KeyValue<i64, i64>;
@@ -69,6 +74,9 @@
 #define _P3_MERGE_NREG_1x	2
 #define _P3_MERGE_NREG_2x	1
 #define _P3_MERGE_NREG_3x	1
+#define _MT_L1_BUFF_N		1024
+#define _MT_L2_BUFF_N		1024
+#define _MTREE_NREG			1
 #endif 
 	using Regtype = Itemtype;
 
@@ -88,6 +96,9 @@
 #define _P3_MERGE_NREG_1x	2
 #define _P3_MERGE_NREG_2x	2
 #define _P3_MERGE_NREG_3x	1
+#define _MT_L1_BUFF_N		4096
+#define _MT_L2_BUFF_N		4096
+#define _MTREE_NREG			2
 
 #elif KEY_TYPE == 1
 	using Itemtype = i64;
@@ -102,6 +113,9 @@
 #define _P3_MERGE_NREG_1x	4
 #define _P3_MERGE_NREG_2x	1
 #define _P3_MERGE_NREG_3x	1
+#define _MT_L1_BUFF_N		32
+#define _MT_L2_BUFF_N		1024
+#define _MTREE_NREG			2
 
 #else 
 	using Itemtype = KeyValue<i64, i64>;
@@ -116,6 +130,9 @@
 #define _P3_MERGE_NREG_1x	4
 #define _P3_MERGE_NREG_2x	2
 #define _P3_MERGE_NREG_3x	4
+#define _MT_L1_BUFF_N		32
+#define _MT_L2_BUFF_N		1024
+#define _MTREE_NREG			1
 #endif 
 
 
@@ -134,6 +151,9 @@
 #define _P3_MERGE_NREG_1x	1
 #define _P3_MERGE_NREG_2x	1
 #define _P3_MERGE_NREG_3x	1
+#define _MT_L1_BUFF_N		32
+#define _MT_L2_BUFF_N		1024
+#define _MTREE_NREG			1
 
 #elif KEY_TYPE == 1
 	using Itemtype = i64;
@@ -148,6 +168,9 @@
 #define _P3_MERGE_NREG_1x	1
 #define _P3_MERGE_NREG_2x	1
 #define _P3_MERGE_NREG_3x	1
+#define _MT_L1_BUFF_N		32
+#define _MT_L2_BUFF_N		1024
+#define _MTREE_NREG			1
 
 #else 
 	using Itemtype = KeyValue<i64, i64>;
@@ -157,11 +180,14 @@
 #define _P2_MERGE_UNROLL	3
 #define _P2_MERGE_NREG_1x	1
 #define _P2_MERGE_NREG_2x	1
-#define _P2_MERGE_NREG_3x	4
+#define _P2_MERGE_NREG_3x	1
 #define _P3_MERGE_UNROLL	2
 #define _P3_MERGE_NREG_1x	1
 #define _P3_MERGE_NREG_2x	1
 #define _P3_MERGE_NREG_3x	1
+#define _MT_L1_BUFF_N		32
+#define _MT_L2_BUFF_N		1024
+#define _MTREE_NREG			1
 #endif 
 
 
@@ -180,6 +206,9 @@
 #define _P3_MERGE_NREG_1x	1
 #define _P3_MERGE_NREG_2x	1
 #define _P3_MERGE_NREG_3x	1
+#define _MT_L1_BUFF_N		32
+#define _MT_L2_BUFF_N		1024
+#define _MTREE_NREG			1
 
 #elif KEY_TYPE == 1
 	using Itemtype = i64;
@@ -194,6 +223,9 @@
 #define _P3_MERGE_NREG_1x	1
 #define _P3_MERGE_NREG_2x	1
 #define _P3_MERGE_NREG_3x	1
+#define _MT_L1_BUFF_N		32
+#define _MT_L2_BUFF_N		1024
+#define _MTREE_NREG			1
 
 #else 
 	using Itemtype = KeyValue<i64, i64>;
@@ -208,6 +240,9 @@
 #define _P3_MERGE_NREG_1x	1
 #define _P3_MERGE_NREG_2x	1
 #define _P3_MERGE_NREG_3x	1
+#define _MT_L1_BUFF_N		32
+#define _MT_L2_BUFF_N		1024
+#define _MTREE_NREG			1
 #endif 
 #endif 
 #define _P2_N				((L2_BYTES >> 1) / sizeof(Itemtype))

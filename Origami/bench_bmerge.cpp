@@ -25,7 +25,7 @@ void bmerge(ui writer_type = 1) {
 	datagen::Writer<Item>  writer;
 	writer.generate(A, n, writer_type);
 	memset(C, 0, sz);
-	SortEvery(A, n, chunk);
+	SortEvery(A, n, chunk);	
 
 #ifdef STD_CORRECTNESS
 	Item* S = (Item*)VALLOC(sz);
@@ -33,7 +33,7 @@ void bmerge(ui writer_type = 1) {
 	SortEvery<Item>(S, n, chunk << 1);
 #endif 
 
-	printf("Reg: %u, Key: %u, NREG: %u, UNROLL: %u\n", Itemsize << 3, sizeof(Reg) << 3, NREG, UNROLL);
+	printf("Reg: %u, Key: %u, NREG: %u, UNROLL: %u\n", sizeof(Reg) << 3, Itemsize << 3, NREG, UNROLL);
 	printf("Merging ... ");
 	hrc::time_point st = hrc::now();
 	FOR(i, repeat, 1) {
