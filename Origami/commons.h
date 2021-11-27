@@ -65,10 +65,6 @@ typedef __m512i avx512;
 typedef __m512	avx512f;
 typedef __m512d avx512d;
 
-#define KEYS_PER_REG_AVX		(sizeof(avx2) / Keysize)	
-#define KEYS_PER_REG_AVX512		(sizeof(avx512) / Keysize)	
-#define KEYS_PER_REG_SSE		(sizeof(sse) / Keysize)	
-
 #define MIN(x, y) ((x)<(y)?(x):(y))
 #define MAX(x, y) ((x)<(y)?(y):(x)) 
 #define FOR(i,n,k)				for (ui64 (i) = 0; (i) < (n); (i)+=(k)) 
@@ -113,12 +109,10 @@ typedef __m512d avx512d;
     b##x = tmp2; \
 }
 
-
 const int rol_const = _MM_SHUFFLE(0, 3, 2, 1);
 const int ror_const = _MM_SHUFFLE(2, 1, 0, 3);
 const int shuff_32_const = _MM_SHUFFLE(2, 3, 0, 1);			// 32 bit shuffle within lane
 const int shuff_64_const = _MM_SHUFFLE(1, 0, 3, 2);
-
 
 #define SWAPv2(x,y) {\
 	{\
@@ -134,5 +128,4 @@ const int shuff_64_const = _MM_SHUFFLE(1, 0, 3, 2);
 		a##x = tmp; \
 	}\
 }
-
 #include "config.h"

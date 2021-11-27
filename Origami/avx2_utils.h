@@ -241,8 +241,6 @@ namespace avx2_utils {
 		// *** NOTE: WORKS ONLY FOR SIGNED INTS!
 		if constexpr (std::is_same<Reg, avx2>::value) {
 			if constexpr (sizeof(Item) == 4) {
-				// *** NOTE: WORKS ONLY FOR SIGNED INTS!
-
 				Reg aux = a0;
 				shuffle<Reg, 128>(aux);
 
@@ -278,8 +276,6 @@ namespace avx2_utils {
 				a0 = _mm256_blendv_epi8(aux, a0, msk2);
 			}
 			else if constexpr (sizeof(Item) == 8) {
-				// *** NOTE: WORKS ONLY FOR SIGNED INTS!
-
 				Reg aux = a0;
 				shuffle<Reg, 128>(aux);
 
@@ -304,8 +300,6 @@ namespace avx2_utils {
 				a0 = _mm256_blendv_epi8(aux, a0, msk2);
 			}
 			else if constexpr (sizeof(Item) == 16) {
-				// *** NOTE: WORKS ONLY FOR SIGNED INTS!
-
 				Reg aux = a0;
 				shuffle<Reg, 128>(aux);
 
@@ -484,28 +478,4 @@ namespace avx2_utils {
 			return x;
 		}
 	}
-
-	// INSTANTIATION
-	template FORCEINLINE void reverse<ui, avx2>(avx2&);
-	template FORCEINLINE void reverse<int, avx2>(avx2&);
-	template FORCEINLINE void reverse<float, avx2f>(avx2f&);
-	template FORCEINLINE void reverse<int64_t, avx2>(avx2&);
-	template FORCEINLINE void reverse<double, avx2d>(avx2d&);
-
-	template FORCEINLINE void swap<ui, avx2>(avx2&, avx2&);
-	template FORCEINLINE void swap<float, avx2f>(avx2f&, avx2f&);
-	template FORCEINLINE void swap<int64_t, avx2>(avx2&, avx2&);
-	template FORCEINLINE void swap<double, avx2d>(avx2d&, avx2d&);
-	template FORCEINLINE void swap<KeyValue<i64, i64>, avx2>(avx2&, avx2&);
-
-	template FORCEINLINE avx2 alignr<avx2, 4>(avx2);
-	template FORCEINLINE avx2 alignr<avx2, 8>(avx2);
-	template FORCEINLINE avx2f alignr<avx2f, 4>(avx2f);
-	template FORCEINLINE avx2d alignr<avx2d, 8>(avx2d);
-
-	template FORCEINLINE void rswap<ui>(avx2&, avx2&);
-	template FORCEINLINE void rswap<float>(avx2f&, avx2f&);
-	template FORCEINLINE void rswap<int64_t>(avx2&, avx2&);
-	template FORCEINLINE void rswap<double>(avx2d&, avx2d&);
-	template FORCEINLINE void rswap<KeyValue<i64, i64>>(avx2&, avx2&);
 }

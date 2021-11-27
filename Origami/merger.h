@@ -6,8 +6,6 @@
 
 namespace origami_merger {
 
-#define MEMCPY_THRESH 100
-
 	template <typename Item>
 	FORCEINLINE Item get_max() {
 		if constexpr (std::is_same<Item, ui>::value)
@@ -22,11 +20,6 @@ namespace origami_merger {
 		}
 	}
 
-
-	/*
-		02.19.21: For some reason, when trying to have one single templated bmerge, scalar version ends up creating branches for the SWAPs
-		For now, let's keep these separate
-	*/
 
 	// scalar
 	// with tail handling
@@ -220,111 +213,6 @@ namespace origami_merger {
 		}
 		c += nreg;
 
-		// method 2
-		/*
-		ui done = 0;
-		while (1) {
-			while (loadFrom != endA && loadFrom != endB) {
-				bool first = *loadFrom <= *opposite; 
-
-				Item* tmp = first ? loadFrom : opposite;
-				opposite = first ? opposite : loadFrom;
-				loadFrom = tmp;
-
-				if constexpr (nreg == 1) {
-					SWAP2(0, 1);
-					c[0] = a0;
-
-					_mm_prefetch((char*)(loadFrom + 64), _MM_HINT_T2);
-					a0 = loadFrom[0];
-				}
-				else if constexpr (nreg == 2) {
-					SWAP2(0, 2); SWAP2(1, 3); SWAP2(1, 2);
-					c[0] = a0; c[1] = a1;
-
-					_mm_prefetch((char*)(loadFrom + 64), _MM_HINT_T2);
-					a0 = loadFrom[0]; a1 = loadFrom[1];
-				}
-				else if constexpr (nreg == 3) {
-					SWAP2(0, 3); SWAP2(1, 4); SWAP2(2, 5); SWAP2(1, 3); SWAP2(2, 4); SWAP2(2, 3);
-					c[0] = a0; c[1] = a1; c[2] = a2;
-
-					_mm_prefetch((char*)(loadFrom + 64), _MM_HINT_T2);
-					a0 = loadFrom[0]; a1 = loadFrom[1]; a2 = loadFrom[2];
-
-				}
-				else if constexpr (nreg == 4) {
-					SWAP2(0, 4);	SWAP2(1, 5);	SWAP2(2, 6);	SWAP2(3, 7);
-					SWAP2(2, 4);	SWAP2(3, 5);
-					SWAP2(1, 2);	SWAP2(3, 4);
-
-					c[0] = a0; c[1] = a1; c[2] = a2; c[3] = a3;
-
-					_mm_prefetch((char*)(loadFrom + 64), _MM_HINT_T2);
-					a0 = loadFrom[0]; a1 = loadFrom[1]; a2 = loadFrom[2]; a3 = loadFrom[3];
-				}
-				else if constexpr (nreg == 5) {
-					// ripco best
-					// Batcher's
-					SWAP2(0, 8); SWAP2(1, 9); SWAP2(2, 6); SWAP2(3, 7);
-					SWAP2(1, 5); SWAP2(4, 8); SWAP2(0, 2);
-					SWAP2(4, 6); SWAP2(3, 5); SWAP2(7, 9);
-					SWAP2(0, 1); SWAP2(2, 3); SWAP2(4, 5); SWAP2(6, 7); SWAP2(8, 9);
-
-					c[0] = a0; c[1] = a1; c[2] = a2; c[3] = a3; c[4] = a4;
-
-					_mm_prefetch((char*)(loadFrom + 64), _MM_HINT_T2);
-					a0 = loadFrom[0]; a1 = loadFrom[1]; a2 = loadFrom[2]; a3 = loadFrom[3]; a4 = loadFrom[4];
-				}
-				else if constexpr (nreg == 8) {
-					SWAP2(0, 8); SWAP2(1, 9); SWAP2(2, 10); SWAP2(3, 11); SWAP2(4, 12); SWAP2(5, 13); SWAP2(6, 14); SWAP2(7, 15);
-					SWAP2(4, 8); SWAP2(5, 9); SWAP2(6, 10); SWAP2(7, 11);
-					SWAP2(2, 4); SWAP2(3, 5); SWAP2(6, 8); SWAP2(7, 9); //SWAP2(10, 12); SWAP2(11, 13);
-					SWAP2(1, 2); SWAP2(3, 4); SWAP2(5, 6); SWAP2(7, 8);	//SWAP2(9, 10); SWAP2(11, 12); SWAP2(13, 14);
-
-					c[0] = a0; c[1] = a1; c[2] = a2; c[3] = a3; c[4] = a4; c[5] = a5; c[6] = a6; c[7] = a7;
-
-					_mm_prefetch((char*)(loadFrom + 64), _MM_HINT_T2);
-					a0 = loadFrom[0]; a1 = loadFrom[1]; a2 = loadFrom[2]; a3 = loadFrom[3]; a4 = loadFrom[4]; a5 = loadFrom[5]; a6 = loadFrom[6]; a7 = loadFrom[7];
-				}
-				c += nreg;
-				loadFrom += nreg;
-			}
-			//printf("%llX, %llX, %llX, %llX\n", loadFrom, opposite, endA, endB);
-			// second option
-			loadFrom = opposite;
-			opposite = SENTINEL_PTR;
-			done++;
-			if (done == 2) {
-				// tail handle
-				if constexpr (nreg == 1) {
-					SWAP2(0, 1);
-					c[0] = a0; c[1] = a1;
-				}
-				else if constexpr (nreg == 2) {
-					SWAP2(0, 2); SWAP2(1, 3); SWAP2(1, 2);
-					c[0] = a0; c[1] = a1; c[2] = a2; c[3] = a3;
-				}
-				else if constexpr (nreg == 3) {
-					SWAP2(0, 3); SWAP2(1, 4); SWAP2(2, 5); SWAP2(1, 3); SWAP2(2, 4); SWAP2(2, 3);
-					c[0] = a0; c[1] = a1; c[2] = a2; c[3] = a3; c[4] = a4; c[2] = a5;
-				}
-				else if constexpr (nreg == 4) {
-					SWAP2(0, 4);	SWAP2(1, 5);	SWAP2(2, 6);	SWAP2(3, 7);
-					SWAP2(2, 4);	SWAP2(3, 5);
-					SWAP2(1, 2);	SWAP2(3, 4); SWAP2(5, 6);
-					c[0] = a0; c[1] = a1; c[2] = a2; c[3] = a3; c[4] = a4; c[5] = a5; c[6] = a6; c[7] = a7;
-				}
-				c += nreg;
-				break;
-			}
-		}
-		*/
-		
-
-		
-
-		
 	}
 
 	// scalar KV --> for i64, i64 only (03.09.21)
@@ -602,267 +490,6 @@ namespace origami_merger {
 
 			E += INC; F += INC;
 		}
-		
-		return;
-		
-		/*
-
-		// handle remaining pairs of merges
-		if (loadFrom0 == endX0 || loadFrom0 == endY0) {
-			//printf("0 finished first\n");
-			if constexpr (nreg == 1) {
-				irl_merge_network::merge_network2<Reg, Item>(a0, a1);
-				origami_utils::store<Reg, stream>(a0, (Reg*)C0);
-			}
-			else if constexpr (nreg == 2) {
-				irl_merge_network::merge_network4<Reg, Item>(a0, a1, a2, a3);
-				origami_utils::store<Reg, stream>(a0, (Reg*)C0); origami_utils::store<Reg, stream>(a1, (Reg*)C0 + 1);
-			}
-			else if constexpr (nreg == 4) {
-				irl_merge_network::merge_network8<Reg, Item>(a0, a1, a2, a3, a4, a5, a6, a7);
-				origami_utils::store<Reg, stream>(a0, (Reg*)C0); origami_utils::store<Reg, stream>(a1, (Reg*)C0 + 1); origami_utils::store<Reg, stream>(a2, (Reg*)C0 + 2); origami_utils::store<Reg, stream>(a3, (Reg*)C0 + 3);
-			}
-			C0 += INC;
-			Item* endOpposite0 = (loadFrom0 == endX0) ? endY0 : endX0;
-			while (opposite0 != endOpposite0) {
-				_mm_prefetch((char*)(opposite0 + 64), _MM_HINT_T2);
-				if constexpr (nreg == 1) {
-					origami_utils::load<Reg>(a0, (Reg*)opposite0);
-					irl_merge_network::merge_network2<Reg, Item>(a0, a1);
-					origami_utils::store<Reg, stream>(a0, (Reg*)C0);
-				}
-				else if constexpr (nreg == 2) {
-					origami_utils::load<Reg>(a0, (Reg*)opposite0); origami_utils::load<Reg>(a1, (Reg*)opposite0 + 1);
-					irl_merge_network::merge_network4<Reg, Item>(a0, a1, a2, a3);
-					origami_utils::store<Reg, stream>(a0, (Reg*)C0); origami_utils::store<Reg, stream>(a1, (Reg*)C0 + 1);
-				}
-				else if constexpr (nreg == 4) {
-					origami_utils::load<Reg>(a0, (Reg*)opposite0); origami_utils::load<Reg>(a1, (Reg*)opposite0 + 1); origami_utils::load<Reg>(a2, (Reg*)opposite0 + 2); 	origami_utils::load<Reg>(a3, (Reg*)opposite0 + 3);
-					irl_merge_network::merge_network8<Reg, Item>(a0, a1, a2, a3, a4, a5, a6, a7);
-					origami_utils::store<Reg, stream>(a0, (Reg*)C0); origami_utils::store<Reg, stream>(a1, (Reg*)C0 + 1); origami_utils::store<Reg, stream>(a2, (Reg*)C0 + 2); origami_utils::store<Reg, stream>(a3, (Reg*)C0 + 3);
-				}
-				opposite0 += INC;
-				C0 += INC;
-			}
-			if constexpr (nreg == 1) origami_utils::store<Reg, stream>(a1, (Reg*)C0);
-			else if constexpr (nreg == 2) {
-				origami_utils::store<Reg, stream>(a2, (Reg*)C0);
-				origami_utils::store<Reg, stream>(a3, (Reg*)C0 + 1);
-			}
-			else if constexpr (nreg == 4) {
-				irl_merge_network::merge_network4<Reg, Item>(a4, a5, a6, a7);
-				origami_utils::store<Reg, stream>(a4, (Reg*)C0);
-				origami_utils::store<Reg, stream>(a5, (Reg*)C0 + 1);
-				origami_utils::store<Reg, stream>(a6, (Reg*)C0 + 2);
-				origami_utils::store<Reg, stream>(a7, (Reg*)C0 + 3);
-			}
-
-			C0 += INC;
-
-			while (loadFrom1 != endX1 && loadFrom1 != endY1) {
-				Item comp1 = *loadFrom1;
-				Item comp2 = *opposite1;
-				Item* tmp = comp1 < comp2 ? loadFrom1 : opposite1;
-				opposite1 = comp1 < comp2 ? opposite1 : loadFrom1;
-				loadFrom1 = tmp;
-
-				if constexpr (nreg == 1) {
-					irl_merge_network::merge_network2<Reg, Item>(a2, a3);
-					origami_utils::store<Reg, stream>(a2, (Reg*)C1);
-					origami_utils::load<Reg>(a2, (Reg*)loadFrom1);
-				}
-				else if constexpr (nreg == 2) {
-					irl_merge_network::merge_network4<Reg, Item>(a4, a5, a6, a7);
-					origami_utils::store<Reg, stream>(a4, (Reg*)C1); origami_utils::store<Reg, stream>(a5, (Reg*)C1 + 1);
-					origami_utils::load<Reg>(a4, (Reg*)loadFrom1);	origami_utils::load<Reg>(a5, (Reg*)loadFrom1 + 1);
-				}
-				else if constexpr (nreg == 4) {
-					irl_merge_network::merge_network8<Reg, Item>(a8, a9, a10, a11, a12, a13, a14, a15);
-					origami_utils::store<Reg, stream>(a8, (Reg*)C1); origami_utils::store<Reg, stream>(a9, (Reg*)C1 + 1); origami_utils::store<Reg, stream>(a10, (Reg*)C1 + 2); origami_utils::store<Reg, stream>(a11, (Reg*)C1 + 3);
-					origami_utils::load<Reg>(a8, (Reg*)loadFrom1);	origami_utils::load<Reg>(a9, (Reg*)loadFrom1 + 1); origami_utils::load<Reg>(a10, (Reg*)loadFrom1 + 2);	origami_utils::load<Reg>(a11, (Reg*)loadFrom1 + 3);
-				}
-
-				loadFrom1 += INC;
-				C1 += INC;
-			}
-			if constexpr (nreg == 1) {
-				irl_merge_network::merge_network2<Reg, Item>(a2, a3);
-				origami_utils::store<Reg, stream>(a2, (Reg*)C1);
-			}
-			else if constexpr (nreg == 2) {
-				irl_merge_network::merge_network4<Reg, Item>(a4, a5, a6, a7);
-				origami_utils::store<Reg, stream>(a4, (Reg*)C1); origami_utils::store<Reg, stream>(a5, (Reg*)C1 + 1);
-			}
-			else if constexpr (nreg == 4) {
-				irl_merge_network::merge_network8<Reg, Item>(a8, a9, a10, a11, a12, a13, a14, a15);
-				origami_utils::store<Reg, stream>(a8, (Reg*)C1); origami_utils::store<Reg, stream>(a9, (Reg*)C1 + 1); origami_utils::store<Reg, stream>(a10, (Reg*)C1 + 2); origami_utils::store<Reg, stream>(a11, (Reg*)C1 + 3);
-			}
-			C1 += INC;
-			Item* endOpposite1 = (loadFrom1 == endX1) ? endY1 : endX1;
-			while (opposite1 != endOpposite1) {
-				_mm_prefetch((char*)(opposite1 + 64), _MM_HINT_T2);
-				if constexpr (nreg == 1) {
-					origami_utils::load<Reg>(a2, (Reg*)opposite1);
-					irl_merge_network::merge_network2<Reg, Item>(a2, a3);
-					origami_utils::store<Reg, stream>(a2, (Reg*)C1);
-				}
-				else if constexpr (nreg == 2) {
-					origami_utils::load<Reg>(a4, (Reg*)opposite1); origami_utils::load<Reg>(a5, (Reg*)opposite1 + 1);
-					irl_merge_network::merge_network4<Reg, Item>(a4, a5, a6, a7);
-					origami_utils::store<Reg, stream>(a4, (Reg*)C1); origami_utils::store<Reg, stream>(a5, (Reg*)C1 + 1);
-				}
-				else if constexpr (nreg == 4) {
-					origami_utils::load<Reg>(a8, (Reg*)opposite1); origami_utils::load<Reg>(a9, (Reg*)opposite1 + 1); origami_utils::load<Reg>(a10, (Reg*)opposite1 + 2); origami_utils::load<Reg>(a11, (Reg*)opposite1 + 3);
-					irl_merge_network::merge_network8<Reg, Item>(a8, a9, a10, a11, a12, a13, a14, a15);
-					origami_utils::store<Reg, stream>(a8, (Reg*)C1); origami_utils::store<Reg, stream>(a9, (Reg*)C1 + 1); origami_utils::store<Reg, stream>(a10, (Reg*)C1 + 2); origami_utils::store<Reg, stream>(a11, (Reg*)C1 + 3);
-				}
-				opposite1 += INC;
-				C1 += INC;
-			}
-			if constexpr (nreg == 1) origami_utils::store<Reg, stream>(a3, (Reg*)C1);
-			else if constexpr (nreg == 2) {
-				origami_utils::store<Reg, stream>(a6, (Reg*)C1);
-				origami_utils::store<Reg, stream>(a7, (Reg*)C1 + 1);
-			}
-			else if constexpr (nreg == 4) {
-				irl_merge_network::merge_network4<Reg, Item>(a12, a13, a14, a15);
-				origami_utils::store<Reg, stream>(a12, (Reg*)C1);
-				origami_utils::store<Reg, stream>(a13, (Reg*)C1 + 1);
-				origami_utils::store<Reg, stream>(a14, (Reg*)C1 + 2);
-				origami_utils::store<Reg, stream>(a15, (Reg*)C1 + 3);
-			}
-			C1 += INC;
-		}
-		else if (loadFrom1 == endX1 || loadFrom1 == endY1) {
-			//printf("1 finished first\n");
-			if constexpr (nreg == 1) {
-				irl_merge_network::merge_network2<Reg, Item>(a2, a3);
-				origami_utils::store<Reg, stream>(a2, (Reg*)C1);
-			}
-			else if constexpr (nreg == 2) {
-				irl_merge_network::merge_network4<Reg, Item>(a4, a5, a6, a7);
-				origami_utils::store<Reg, stream>(a4, (Reg*)C1); origami_utils::store<Reg, stream>(a5, (Reg*)C1 + 1);
-			}
-			else if constexpr (nreg == 4) {
-				irl_merge_network::merge_network8<Reg, Item>(a8, a9, a10, a11, a12, a13, a14, a15);
-				origami_utils::store<Reg, stream>(a8, (Reg*)C1); origami_utils::store<Reg, stream>(a9, (Reg*)C1 + 1);
-				origami_utils::store<Reg, stream>(a10, (Reg*)C1 + 2); origami_utils::store<Reg, stream>(a11, (Reg*)C1 + 3);
-			}
-			C1 += INC;
-			Item* endOpposite1 = (loadFrom1 == endX1) ? endY1 : endX1;
-			while (opposite1 != endOpposite1) {
-				_mm_prefetch((char*)(opposite1 + 64), _MM_HINT_T2);
-				if constexpr (nreg == 1) {
-					origami_utils::load<Reg>(a2, (Reg*)opposite1);
-					irl_merge_network::merge_network2<Reg, Item>(a2, a3);
-					origami_utils::store<Reg, stream>(a2, (Reg*)C1);
-				}
-				else if constexpr (nreg == 2) {
-					origami_utils::load<Reg>(a4, (Reg*)opposite1); origami_utils::load<Reg>(a5, (Reg*)opposite1 + 1);
-					irl_merge_network::merge_network4<Reg, Item>(a4, a5, a6, a7);
-					origami_utils::store<Reg, stream>(a4, (Reg*)C1); origami_utils::store<Reg, stream>(a5, (Reg*)C1 + 1);
-				}
-				else if constexpr (nreg == 4) {
-					origami_utils::load<Reg>(a8, (Reg*)opposite1); origami_utils::load<Reg>(a9, (Reg*)opposite1 + 1); origami_utils::load<Reg>(a10, (Reg*)opposite1 + 2); 	origami_utils::load<Reg>(a11, (Reg*)opposite1 + 3);
-
-					irl_merge_network::merge_network8<Reg, Item>(a8, a9, a10, a11, a12, a13, a14, a15);
-					origami_utils::store<Reg, stream>(a8, (Reg*)C1); origami_utils::store<Reg, stream>(a9, (Reg*)C1 + 1);
-					origami_utils::store<Reg, stream>(a10, (Reg*)C1 + 2); origami_utils::store<Reg, stream>(a11, (Reg*)C1 + 3);
-				}
-				opposite1 += INC;
-				C1 += INC;
-			}
-			if constexpr (nreg == 1) origami_utils::store<Reg, stream>(a3, (Reg*)C1);
-			else if constexpr (nreg == 2) {
-				origami_utils::store<Reg, stream>(a6, (Reg*)C1);
-				origami_utils::store<Reg, stream>(a7, (Reg*)C1 + 1);
-			}
-			else if constexpr (nreg == 4) {
-				irl_merge_network::merge_network4<Reg, Item>(a12, a13, a14, a15);
-				origami_utils::store<Reg, stream>(a12, (Reg*)C1);
-				origami_utils::store<Reg, stream>(a13, (Reg*)C1 + 1);
-				origami_utils::store<Reg, stream>(a14, (Reg*)C1 + 2);
-				origami_utils::store<Reg, stream>(a15, (Reg*)C1 + 3);
-			}
-			C1 += INC;
-
-			while (loadFrom0 != endX0 && loadFrom0 != endY0) {
-				Item comp1 = *loadFrom0;
-				Item comp2 = *opposite0;
-				Item* tmp = comp1 < comp2 ? loadFrom0 : opposite0;
-				opposite0 = comp1 < comp2 ? opposite0 : loadFrom0;
-				loadFrom0 = tmp;
-
-				if constexpr (nreg == 1) {
-					irl_merge_network::merge_network2<Reg, Item>(a0, a1);
-					origami_utils::store<Reg, stream>(a0, (Reg*)C0);
-					origami_utils::load<Reg>(a0, (Reg*)loadFrom0);
-				}
-				else if constexpr (nreg == 2) {
-					irl_merge_network::merge_network4<Reg, Item>(a0, a1, a2, a3);
-					origami_utils::store<Reg, stream>(a0, (Reg*)C0); origami_utils::store<Reg, stream>(a1, (Reg*)C0 + 1);
-					origami_utils::load<Reg>(a0, (Reg*)loadFrom0); origami_utils::load<Reg>(a1, (Reg*)loadFrom0 + 1);
-				}
-				else if constexpr (nreg == 4) {
-					irl_merge_network::merge_network8<Reg, Item>(a0, a1, a2, a3, a4, a5, a6, a7);
-					origami_utils::store<Reg, stream>(a0, (Reg*)C0); origami_utils::store<Reg, stream>(a1, (Reg*)C0 + 1);
-					origami_utils::store<Reg, stream>(a2, (Reg*)C0 + 2); origami_utils::store<Reg, stream>(a3, (Reg*)C0 + 3);
-					origami_utils::load<Reg>(a0, (Reg*)loadFrom0); origami_utils::load<Reg>(a1, (Reg*)loadFrom0 + 1);
-					origami_utils::load<Reg>(a2, (Reg*)loadFrom0 + 2); origami_utils::load<Reg>(a3, (Reg*)loadFrom0 + 3);
-				}
-				loadFrom0 += INC;
-				C0 += INC;
-			}
-			if constexpr (nreg == 1) {
-				irl_merge_network::merge_network2<Reg, Item>(a0, a1);
-				origami_utils::store<Reg, stream>(a0, (Reg*)C0);
-			}
-			else if constexpr (nreg == 2) {
-				irl_merge_network::merge_network4<Reg, Item>(a0, a1, a2, a3);
-				origami_utils::store<Reg, stream>(a0, (Reg*)C0); origami_utils::store<Reg, stream>(a1, (Reg*)C0 + 1);
-			}
-			else if constexpr (nreg == 4) {
-				irl_merge_network::merge_network8<Reg, Item>(a0, a1, a2, a3, a4, a5, a6, a7);
-				origami_utils::store<Reg, stream>(a0, (Reg*)C0); origami_utils::store<Reg, stream>(a1, (Reg*)C0 + 1);
-				origami_utils::store<Reg, stream>(a2, (Reg*)C0 + 2); origami_utils::store<Reg, stream>(a3, (Reg*)C0 + 3);
-			}
-			C0 += INC;
-			Item* endOpposite0 = (loadFrom0 == endX0) ? endY0 : endX0;
-			while (opposite0 != endOpposite0) {
-				_mm_prefetch((char*)(opposite0 + 64), _MM_HINT_T2);
-				if constexpr (nreg == 1) {
-					origami_utils::load<Reg>(a0, (Reg*)opposite0);
-					irl_merge_network::merge_network2<Reg, Item>(a0, a1);
-					origami_utils::store<Reg, stream>(a0, (Reg*)C0);
-				}
-				else if constexpr (nreg == 2) {
-					origami_utils::load<Reg>(a0, (Reg*)opposite0); origami_utils::load<Reg>(a1, (Reg*)opposite0 + 1);
-					irl_merge_network::merge_network4<Reg, Item>(a0, a1, a2, a3);
-					origami_utils::store<Reg, stream>(a0, (Reg*)C0); origami_utils::store<Reg, stream>(a1, (Reg*)C0 + 1);
-				}
-				else if constexpr (nreg == 4) {
-					origami_utils::load<Reg>(a0, (Reg*)opposite0); origami_utils::load<Reg>(a1, (Reg*)opposite0 + 1);
-					origami_utils::load<Reg>(a2, (Reg*)opposite0 + 2); origami_utils::load<Reg>(a3, (Reg*)opposite0 + 3);
-					irl_merge_network::merge_network8<Reg, Item>(a0, a1, a2, a3, a4, a5, a6, a7);
-					origami_utils::store<Reg, stream>(a0, (Reg*)C0); origami_utils::store<Reg, stream>(a1, (Reg*)C0 + 1);
-					origami_utils::store<Reg, stream>(a2, (Reg*)C0 + 2); origami_utils::store<Reg, stream>(a3, (Reg*)C0 + 3);
-				}
-				opposite0 += INC;
-				C0 += INC;
-			}
-			if constexpr (nreg == 1) origami_utils::store<Reg, stream>(a1, (Reg*)C0);
-			else if constexpr (nreg == 2) {
-				origami_utils::store<Reg, stream>(a2, (Reg*)C0);
-				origami_utils::store<Reg, stream>(a3, (Reg*)C0 + 1);
-			}
-			else if constexpr (nreg == 4) {
-				irl_merge_network::merge_network4<Reg, Item>(a4, a5, a6, a7);
-				origami_utils::store<Reg, stream>(a4, (Reg*)C0); origami_utils::store<Reg, stream>(a5, (Reg*)C0 + 1);
-				origami_utils::store<Reg, stream>(a6, (Reg*)C0 + 2); origami_utils::store<Reg, stream>(a7, (Reg*)C0 + 3);
-			}
-			C0 += INC;
-		}
-		*/
 	}
 
 	template <typename Item, ui nreg>
@@ -1321,18 +948,6 @@ namespace origami_merger {
 		Reg* a = (Reg*)A, * b = (Reg*)B, * endA = (Reg*)(A + lenA), * endB = (Reg*)(B + lenB), * c = (Reg*)C;
 		register Reg a0, a1, a2, a3, a4, a5, a6, a7, a8, a9;
 
-		/*if (*(((Item*)endA) - 1) <= *(Item*)B) {
-			memcpy(C, A, sizeof(Item) * lenA);
-			memcpy(C + lenA, B, sizeof(Item) * lenB);
-			return;
-		}
-		else if (*(((Item*)endB) - 1) <= *(Item*)A) {
-			memcpy(C, B, sizeof(Item) * lenB);
-			memcpy(C + lenB, A, sizeof(Item) * lenA);
-			return;
-		}*/
-
-
 
 		origami_utils::init_reg<Reg>(a0); origami_utils::init_reg<Reg>(a1); origami_utils::init_reg<Reg>(a2); origami_utils::init_reg<Reg>(a3);
 		origami_utils::init_reg<Reg>(a4); origami_utils::init_reg<Reg>(a5); origami_utils::init_reg<Reg>(a6); origami_utils::init_reg<Reg>(a7);
@@ -1466,103 +1081,72 @@ namespace origami_merger {
 
 		Reg* endOp = (loadFrom == endA) ? endB : endA;
 
-		/*Item last;
-		if constexpr (nreg == 1) last = origami_utils::get_last_item<Reg, Item>(a1);
-		if constexpr (nreg == 2) last = origami_utils::get_last_item<Reg, Item>(a3);
-		if constexpr (nreg == 3) last = origami_utils::get_last_item<Reg, Item>(a5);
-		if constexpr (nreg == 4) last = origami_utils::get_last_item<Reg, Item>(a7);
-
-		if (last < *(Item*)opposite && (endOp - opposite) * sizeof(Reg) / sizeof(Item) >= MEMCPY_THRESH) {
-			if constexpr (nreg == 1) { 
-				origami_utils::store<Reg, stream>(a1, c); 
-			}
-			if constexpr (nreg == 2) { 
-				origami_utils::store<Reg, stream>(a2, c); 
-				origami_utils::store<Reg, stream>(a3, c + 1);
-			}
-			if constexpr (nreg == 3) { 
-				origami_utils::store<Reg, stream>(a3, c); 
-				origami_utils::store<Reg, stream>(a4, c + 1); 
-				origami_utils::store<Reg, stream>(a5, c + 2); 
-			}
-			if constexpr (nreg == 4) { 
-				origami_utils::store<Reg, stream>(a4, c); 
-				origami_utils::store<Reg, stream>(a5, c + 1); 
-				origami_utils::store<Reg, stream>(a6, c + 2); 
-				origami_utils::store<Reg, stream>(a7, c + 3); 
-			}
-			c += nreg;
-			memcpy(c, opposite, (endOp - opposite) * sizeof(Reg));
-		}
-		else {*/
-			while (opposite != endOp) {
-				_mm_prefetch((char*)(opposite + 64), _MM_HINT_T2);
-
-				if constexpr (nreg == 1) {
-					origami_utils::load<Reg>(a0, opposite);
-					// irl_merge_network::merge_network2<Reg, Item>(a0, a1);
-					origami_utils::rswap<Reg, Item>(a0, a1);
-
-					origami_utils::store<Reg, stream>(a0, c);
-				}
-				else if constexpr (nreg == 2) {
-					origami_utils::load<Reg>(a0, opposite); origami_utils::load<Reg>(a1, opposite + 1);
-
-					//irl_merge_network::merge_network4<Reg, Item>(a0, a1, a2, a3);
-					origami_utils::rswap<Reg, Item>(a0, a2); origami_utils::rswap<Reg, Item>(a1, a3);
-					origami_utils::rswap<Reg, Item>(a1, a2);
-
-					origami_utils::store<Reg, stream>(a0, c); origami_utils::store<Reg, stream>(a1, c + 1);
-				}
-				else if constexpr (nreg == 3) {
-					origami_utils::load<Reg>(a0, opposite); origami_utils::load<Reg>(a1, opposite + 1); origami_utils::load<Reg>(a2, opposite + 2);
-					origami_utils::rswap<Reg, Item>(a0, a3); origami_utils::rswap<Reg, Item>(a1, a4); origami_utils::rswap<Reg, Item>(a2, a5);
-					origami_utils::rswap<Reg, Item>(a1, a3); origami_utils::rswap<Reg, Item>(a2, a4); origami_utils::rswap<Reg, Item>(a2, a3);
-					/*origami_utils::rswap<Reg, Item>(a0, a4); origami_utils::rswap<Reg, Item>(a1, a5);
-					origami_utils::rswap<Reg, Item>(a1, a3); origami_utils::rswap<Reg, Item>(a2, a4);
-					origami_utils::rswap<Reg, Item>(a0, a1); origami_utils::rswap<Reg, Item>(a2, a3); origami_utils::rswap<Reg, Item>(a4, a5);*/
-
-					origami_utils::store<Reg, stream>(a0, c); origami_utils::store<Reg, stream>(a1, c + 1); origami_utils::store<Reg, stream>(a2, c + 2);
-				}
-				else if constexpr (nreg == 4) {
-					origami_utils::load<Reg>(a0, opposite); origami_utils::load<Reg>(a1, opposite + 1);
-					origami_utils::load<Reg>(a2, opposite + 2); origami_utils::load<Reg>(a3, opposite + 3);
-
-					// irl_merge_network::merge_network8<Reg, Item>(a0, a1, a2, a3, a4, a5, a6, a7);
-					origami_utils::rswap<Reg, Item>(a0, a4);	origami_utils::rswap<Reg, Item>(a1, a5);	origami_utils::rswap<Reg, Item>(a2, a6);	origami_utils::rswap<Reg, Item>(a3, a7);
-					origami_utils::rswap<Reg, Item>(a2, a4);	origami_utils::rswap<Reg, Item>(a3, a5);
-					origami_utils::rswap<Reg, Item>(a1, a2);	origami_utils::rswap<Reg, Item>(a3, a4);
-
-					origami_utils::store<Reg, stream>(a0, c); origami_utils::store<Reg, stream>(a1, c + 1);
-					origami_utils::store<Reg, stream>(a2, c + 2); origami_utils::store<Reg, stream>(a3, c + 3);
-				}
-				opposite += nreg;
-				c += nreg;
-			}
+		
+		while (opposite != endOp) {
+			_mm_prefetch((char*)(opposite + 64), _MM_HINT_T2);
 
 			if constexpr (nreg == 1) {
-				origami_utils::store<Reg, stream>(a1, c);
+				origami_utils::load<Reg>(a0, opposite);
+				// irl_merge_network::merge_network2<Reg, Item>(a0, a1);
+				origami_utils::rswap<Reg, Item>(a0, a1);
+
+				origami_utils::store<Reg, stream>(a0, c);
 			}
 			else if constexpr (nreg == 2) {
-				origami_utils::store<Reg, stream>(a2, c); origami_utils::store<Reg, stream>(a3, c + 1);
+				origami_utils::load<Reg>(a0, opposite); origami_utils::load<Reg>(a1, opposite + 1);
+
+				//irl_merge_network::merge_network4<Reg, Item>(a0, a1, a2, a3);
+				origami_utils::rswap<Reg, Item>(a0, a2); origami_utils::rswap<Reg, Item>(a1, a3);
+				origami_utils::rswap<Reg, Item>(a1, a2);
+
+				origami_utils::store<Reg, stream>(a0, c); origami_utils::store<Reg, stream>(a1, c + 1);
 			}
 			else if constexpr (nreg == 3) {
-				origami_utils::rswap<Reg, Item>(a3, a5); origami_utils::rswap<Reg, Item>(a3, a4); origami_utils::rswap<Reg, Item>(a4, a5);
-				origami_utils::store<Reg, stream>(a3, c); origami_utils::store<Reg, stream>(a4, c + 1); origami_utils::store<Reg, stream>(a5, c + 2);
+				origami_utils::load<Reg>(a0, opposite); origami_utils::load<Reg>(a1, opposite + 1); origami_utils::load<Reg>(a2, opposite + 2);
+				origami_utils::rswap<Reg, Item>(a0, a3); origami_utils::rswap<Reg, Item>(a1, a4); origami_utils::rswap<Reg, Item>(a2, a5);
+				origami_utils::rswap<Reg, Item>(a1, a3); origami_utils::rswap<Reg, Item>(a2, a4); origami_utils::rswap<Reg, Item>(a2, a3);
+				/*origami_utils::rswap<Reg, Item>(a0, a4); origami_utils::rswap<Reg, Item>(a1, a5);
+				origami_utils::rswap<Reg, Item>(a1, a3); origami_utils::rswap<Reg, Item>(a2, a4);
+				origami_utils::rswap<Reg, Item>(a0, a1); origami_utils::rswap<Reg, Item>(a2, a3); origami_utils::rswap<Reg, Item>(a4, a5);*/
+
+				origami_utils::store<Reg, stream>(a0, c); origami_utils::store<Reg, stream>(a1, c + 1); origami_utils::store<Reg, stream>(a2, c + 2);
 			}
 			else if constexpr (nreg == 4) {
-				// irl_merge_network::merge_network4<Reg, Item>(a4, a5, a6, a7);
-				origami_utils::rswap<Reg, Item>(a5, a6);	// to fix the last set order
-				origami_utils::rswap<Reg, Item>(a4, a6); origami_utils::rswap<Reg, Item>(a5, a7);
-				origami_utils::rswap<Reg, Item>(a5, a7);
+				origami_utils::load<Reg>(a0, opposite); origami_utils::load<Reg>(a1, opposite + 1);
+				origami_utils::load<Reg>(a2, opposite + 2); origami_utils::load<Reg>(a3, opposite + 3);
 
-				origami_utils::store<Reg, stream>(a4, c); origami_utils::store<Reg, stream>(a5, c + 1);
-				origami_utils::store<Reg, stream>(a6, c + 2); origami_utils::store<Reg, stream>(a7, c + 3);
+				// irl_merge_network::merge_network8<Reg, Item>(a0, a1, a2, a3, a4, a5, a6, a7);
+				origami_utils::rswap<Reg, Item>(a0, a4);	origami_utils::rswap<Reg, Item>(a1, a5);	origami_utils::rswap<Reg, Item>(a2, a6);	origami_utils::rswap<Reg, Item>(a3, a7);
+				origami_utils::rswap<Reg, Item>(a2, a4);	origami_utils::rswap<Reg, Item>(a3, a5);
+				origami_utils::rswap<Reg, Item>(a1, a2);	origami_utils::rswap<Reg, Item>(a3, a4);
+
+				origami_utils::store<Reg, stream>(a0, c); origami_utils::store<Reg, stream>(a1, c + 1);
+				origami_utils::store<Reg, stream>(a2, c + 2); origami_utils::store<Reg, stream>(a3, c + 3);
 			}
+			opposite += nreg;
 			c += nreg;
-		//}
+		}
 
-		
+		if constexpr (nreg == 1) {
+			origami_utils::store<Reg, stream>(a1, c);
+		}
+		else if constexpr (nreg == 2) {
+			origami_utils::store<Reg, stream>(a2, c); origami_utils::store<Reg, stream>(a3, c + 1);
+		}
+		else if constexpr (nreg == 3) {
+			origami_utils::rswap<Reg, Item>(a3, a5); origami_utils::rswap<Reg, Item>(a3, a4); origami_utils::rswap<Reg, Item>(a4, a5);
+			origami_utils::store<Reg, stream>(a3, c); origami_utils::store<Reg, stream>(a4, c + 1); origami_utils::store<Reg, stream>(a5, c + 2);
+		}
+		else if constexpr (nreg == 4) {
+			// irl_merge_network::merge_network4<Reg, Item>(a4, a5, a6, a7);
+			origami_utils::rswap<Reg, Item>(a5, a6);	// to fix the last set order
+			origami_utils::rswap<Reg, Item>(a4, a6); origami_utils::rswap<Reg, Item>(a5, a7);
+			origami_utils::rswap<Reg, Item>(a5, a7);
+
+			origami_utils::store<Reg, stream>(a4, c); origami_utils::store<Reg, stream>(a5, c + 1);
+			origami_utils::store<Reg, stream>(a6, c + 2); origami_utils::store<Reg, stream>(a7, c + 3);
+		}
+		c += nreg;
 	}
 	
 	// 2x mergebl2
@@ -1575,50 +1159,6 @@ namespace origami_merger {
 		Item* __restrict endX0 = A + lenA, * __restrict endY0 = B + lenB;
 		Item* __restrict X1 = C, * __restrict Y1 = D, * __restrict C1 = F;
 		Item* __restrict endX1 = C + lenC, * __restrict endY1 = D + lenD;
-
-
-		// CASE: already sorted
-		/*if (*(endX0 - 1) <= *Y0) {
-			memcpy(C0, X0, sizeof(Item) * lenA);
-			memcpy(C0 + lenA, Y0, sizeof(Item) * lenB);
-			if (*(endX1 - 1) <= *Y1) {
-				memcpy(C1, X1, sizeof(Item) * lenC);
-				memcpy(C1 + lenC, Y1, sizeof(Item) * lenD);
-			}
-			else if (*(endY1 - 1) <= *X1) {
-				memcpy(C1, Y1, sizeof(Item) * lenD);
-				memcpy(C1 + lenD, X1, sizeof(Item) * lenC);
-			}
-			else mergebl2_vectorized<Reg, stream, nreg, Item>(C, lenC, D, lenD, F);
-			return;
-		}
-		else if (*(endY0 - 1) <= *X0) {
-			memcpy(C0, Y0, sizeof(Item) * lenB);
-			memcpy(C0 + lenB, X0, sizeof(Item) * lenA);
-			if (*(endX1 - 1) <= *Y1) {
-				memcpy(C1, X1, sizeof(Item) * lenC);
-				memcpy(C1 + lenC, Y1, sizeof(Item) * lenD);
-			}
-			else if (*(endY1 - 1) <= *X1) {
-				memcpy(C1, Y1, sizeof(Item) * lenD);
-				memcpy(C1 + lenD, X1, sizeof(Item) * lenC);
-			}
-			else mergebl2_vectorized<Reg, stream, nreg, Item>(C, lenC, D, lenD, F);
-			return;
-		}
-		else if (*(endX1 - 1) <= *Y1) {
-			memcpy(C1, X1, sizeof(Item) * lenC);
-			memcpy(C1 + lenC, Y1, sizeof(Item) * lenD);
-			mergebl2_vectorized<Reg, stream, nreg, Item>(A, lenA, B, lenB, E);
-			return;
-		}
-		else if (*(endY1 - 1) <= *X1) {
-			memcpy(C1, Y1, sizeof(Item) * lenD);
-			memcpy(C1 + lenD, X1, sizeof(Item) * lenC);
-			mergebl2_vectorized<Reg, stream, nreg, Item>(A, lenA, B, lenB, E);
-			return;
-		}*/
-
 
 		constexpr ui INC = sizeof(Reg) / sizeof(Item) * nreg;
 		
@@ -1744,79 +1284,50 @@ namespace origami_merger {
 			Item* endOpposite0 = (loadFrom0 == endX0) ? endY0 : endX0;
 			
 			
-			/*Item last;
-			if constexpr (nreg == 1) last = origami_utils::get_last_item<Reg, Item>(a1);
-			if constexpr (nreg == 2) last = origami_utils::get_last_item<Reg, Item>(a3);
-			if constexpr (nreg == 3) last = origami_utils::get_last_item<Reg, Item>(a5);
-			if constexpr (nreg == 4) last = origami_utils::get_last_item<Reg, Item>(a7);
-
-			if (last <= *opposite0 && (endOpposite0 - opposite0) >= MEMCPY_THRESH) {
+			
+			while (opposite0 != endOpposite0) {
+				_mm_prefetch((char*)(opposite0 + 64), _MM_HINT_T2);
 				if constexpr (nreg == 1) {
-					origami_utils::store<Reg, stream>(a1, (Reg*)C0);
+					origami_utils::load<Reg>(a0, (Reg*)opposite0);
+					origami_merge_network::merge_network2<Reg, Item>(a0, a1);
+					origami_utils::store<Reg, stream>(a0, (Reg*)C0);
 				}
-				if constexpr (nreg == 2) {
-					origami_utils::store<Reg, stream>(a2, (Reg*)C0);
-					origami_utils::store<Reg, stream>(a3, (Reg*)C0 + 1);
-				}
-				if constexpr (nreg == 3) {
-					origami_utils::store<Reg, stream>(a3, (Reg*)C0);
-					origami_utils::store<Reg, stream>(a4, (Reg*)C0 + 1);
-					origami_utils::store<Reg, stream>(a5, (Reg*)C0 + 2);
-				}
-				if constexpr (nreg == 4) {
-					origami_utils::store<Reg, stream>(a4, (Reg*)C0);
-					origami_utils::store<Reg, stream>(a5, (Reg*)C0 + 1);
-					origami_utils::store<Reg, stream>(a6, (Reg*)C0 + 2);
-					origami_utils::store<Reg, stream>(a7, (Reg*)C0 + 3);
-				}
-				C0 += INC;
-				memcpy(C0, opposite0, sizeof(Item)* (endOpposite0 - opposite0));
-			}
-			else {*/
-				while (opposite0 != endOpposite0) {
-					_mm_prefetch((char*)(opposite0 + 64), _MM_HINT_T2);
-					if constexpr (nreg == 1) {
-						origami_utils::load<Reg>(a0, (Reg*)opposite0);
-						origami_merge_network::merge_network2<Reg, Item>(a0, a1);
-						origami_utils::store<Reg, stream>(a0, (Reg*)C0);
-					}
-					else if constexpr (nreg == 2) {
-						origami_utils::load<Reg>(a0, (Reg*)opposite0); origami_utils::load<Reg>(a1, (Reg*)opposite0 + 1);
-						origami_merge_network::merge_network4<Reg, Item>(a0, a1, a2, a3);
-						origami_utils::store<Reg, stream>(a0, (Reg*)C0); origami_utils::store<Reg, stream>(a1, (Reg*)C0 + 1);
-					}
-					else if constexpr (nreg == 3) {
-						origami_utils::load<Reg>(a0, (Reg*)opposite0); origami_utils::load<Reg>(a1, (Reg*)opposite0 + 1); origami_utils::load<Reg>(a2, (Reg*)opposite0 + 2);
-						origami_merge_network::merge_network6<Reg, Item>(a0, a1, a2, a3, a4, a5);
-						origami_utils::store<Reg, stream>(a0, (Reg*)C0); origami_utils::store<Reg, stream>(a1, (Reg*)C0 + 1); origami_utils::store<Reg, stream>(a2, (Reg*)C0 + 2);
-					}
-					else if constexpr (nreg == 4) {
-						origami_utils::load<Reg>(a0, (Reg*)opposite0); origami_utils::load<Reg>(a1, (Reg*)opposite0 + 1); origami_utils::load<Reg>(a2, (Reg*)opposite0 + 2); 	origami_utils::load<Reg>(a3, (Reg*)opposite0 + 3);
-						origami_merge_network::merge_network8<Reg, Item>(a0, a1, a2, a3, a4, a5, a6, a7);
-						origami_utils::store<Reg, stream>(a0, (Reg*)C0); origami_utils::store<Reg, stream>(a1, (Reg*)C0 + 1); origami_utils::store<Reg, stream>(a2, (Reg*)C0 + 2); origami_utils::store<Reg, stream>(a3, (Reg*)C0 + 3);
-					}
-					opposite0 += INC;
-					C0 += INC;
-				}
-				if constexpr (nreg == 1) origami_utils::store<Reg, stream>(a1, (Reg*)C0);
 				else if constexpr (nreg == 2) {
-					origami_utils::store<Reg, stream>(a2, (Reg*)C0);
-					origami_utils::store<Reg, stream>(a3, (Reg*)C0 + 1);
+					origami_utils::load<Reg>(a0, (Reg*)opposite0); origami_utils::load<Reg>(a1, (Reg*)opposite0 + 1);
+					origami_merge_network::merge_network4<Reg, Item>(a0, a1, a2, a3);
+					origami_utils::store<Reg, stream>(a0, (Reg*)C0); origami_utils::store<Reg, stream>(a1, (Reg*)C0 + 1);
 				}
 				else if constexpr (nreg == 3) {
-					origami_utils::store<Reg, stream>(a3, (Reg*)C0);
-					origami_utils::store<Reg, stream>(a4, (Reg*)C0 + 1);
-					origami_utils::store<Reg, stream>(a5, (Reg*)C0 + 2);
+					origami_utils::load<Reg>(a0, (Reg*)opposite0); origami_utils::load<Reg>(a1, (Reg*)opposite0 + 1); origami_utils::load<Reg>(a2, (Reg*)opposite0 + 2);
+					origami_merge_network::merge_network6<Reg, Item>(a0, a1, a2, a3, a4, a5);
+					origami_utils::store<Reg, stream>(a0, (Reg*)C0); origami_utils::store<Reg, stream>(a1, (Reg*)C0 + 1); origami_utils::store<Reg, stream>(a2, (Reg*)C0 + 2);
 				}
 				else if constexpr (nreg == 4) {
-					origami_merge_network::merge_network4<Reg, Item>(a4, a5, a6, a7);
-					origami_utils::store<Reg, stream>(a4, (Reg*)C0);
-					origami_utils::store<Reg, stream>(a5, (Reg*)C0 + 1);
-					origami_utils::store<Reg, stream>(a6, (Reg*)C0 + 2);
-					origami_utils::store<Reg, stream>(a7, (Reg*)C0 + 3);
+					origami_utils::load<Reg>(a0, (Reg*)opposite0); origami_utils::load<Reg>(a1, (Reg*)opposite0 + 1); origami_utils::load<Reg>(a2, (Reg*)opposite0 + 2); 	origami_utils::load<Reg>(a3, (Reg*)opposite0 + 3);
+					origami_merge_network::merge_network8<Reg, Item>(a0, a1, a2, a3, a4, a5, a6, a7);
+					origami_utils::store<Reg, stream>(a0, (Reg*)C0); origami_utils::store<Reg, stream>(a1, (Reg*)C0 + 1); origami_utils::store<Reg, stream>(a2, (Reg*)C0 + 2); origami_utils::store<Reg, stream>(a3, (Reg*)C0 + 3);
 				}
+				opposite0 += INC;
 				C0 += INC;
-			//}
+			}
+			if constexpr (nreg == 1) origami_utils::store<Reg, stream>(a1, (Reg*)C0);
+			else if constexpr (nreg == 2) {
+				origami_utils::store<Reg, stream>(a2, (Reg*)C0);
+				origami_utils::store<Reg, stream>(a3, (Reg*)C0 + 1);
+			}
+			else if constexpr (nreg == 3) {
+				origami_utils::store<Reg, stream>(a3, (Reg*)C0);
+				origami_utils::store<Reg, stream>(a4, (Reg*)C0 + 1);
+				origami_utils::store<Reg, stream>(a5, (Reg*)C0 + 2);
+			}
+			else if constexpr (nreg == 4) {
+				origami_merge_network::merge_network4<Reg, Item>(a4, a5, a6, a7);
+				origami_utils::store<Reg, stream>(a4, (Reg*)C0);
+				origami_utils::store<Reg, stream>(a5, (Reg*)C0 + 1);
+				origami_utils::store<Reg, stream>(a6, (Reg*)C0 + 2);
+				origami_utils::store<Reg, stream>(a7, (Reg*)C0 + 3);
+			}
+			C0 += INC;
 			
 			while (loadFrom1 != endX1 && loadFrom1 != endY1) {
 				Item comp1 = *loadFrom1;
@@ -1868,78 +1379,50 @@ namespace origami_merger {
 			Item* endOpposite1 = (loadFrom1 == endX1) ? endY1 : endX1;
 
 			
-			/*if constexpr (nreg == 1) last = origami_utils::get_last_item<Reg, Item>(a3);
-			if constexpr (nreg == 2) last = origami_utils::get_last_item<Reg, Item>(a7);
-			if constexpr (nreg == 3) last = origami_utils::get_last_item<Reg, Item>(a11);
-			if constexpr (nreg == 4) last = origami_utils::get_last_item<Reg, Item>(a15);
-
-			if (last <= *opposite1 && (endOpposite1 - opposite1) >= MEMCPY_THRESH) {
+			
+			while (opposite1 != endOpposite1) {
+				_mm_prefetch((char*)(opposite1 + 64), _MM_HINT_T2);
 				if constexpr (nreg == 1) {
-					origami_utils::store<Reg, stream>(a3, (Reg*)C1);
+					origami_utils::load<Reg>(a2, (Reg*)opposite1);
+					origami_merge_network::merge_network2<Reg, Item>(a2, a3);
+					origami_utils::store<Reg, stream>(a2, (Reg*)C1);
 				}
-				if constexpr (nreg == 2) {
-					origami_utils::store<Reg, stream>(a6, (Reg*)C1);
-					origami_utils::store<Reg, stream>(a7, (Reg*)C1 + 1);
-				}
-				if constexpr (nreg == 3) {
-					origami_utils::store<Reg, stream>(a9, (Reg*)C1);
-					origami_utils::store<Reg, stream>(a10, (Reg*)C1 + 1);
-					origami_utils::store<Reg, stream>(a11, (Reg*)C1 + 2);
-				}
-				if constexpr (nreg == 4) {
-					origami_utils::store<Reg, stream>(a12, (Reg*)C1);
-					origami_utils::store<Reg, stream>(a13, (Reg*)C1 + 1);
-					origami_utils::store<Reg, stream>(a14, (Reg*)C1 + 2);
-					origami_utils::store<Reg, stream>(a15, (Reg*)C1 + 3);
-				}
-				C1 += INC;
-				memcpy(C1, opposite1, sizeof(Item) * (endOpposite1 - opposite1));
-			}
-			else {*/
-				while (opposite1 != endOpposite1) {
-					_mm_prefetch((char*)(opposite1 + 64), _MM_HINT_T2);
-					if constexpr (nreg == 1) {
-						origami_utils::load<Reg>(a2, (Reg*)opposite1);
-						origami_merge_network::merge_network2<Reg, Item>(a2, a3);
-						origami_utils::store<Reg, stream>(a2, (Reg*)C1);
-					}
-					else if constexpr (nreg == 2) {
-						origami_utils::load<Reg>(a4, (Reg*)opposite1); origami_utils::load<Reg>(a5, (Reg*)opposite1 + 1);
-						origami_merge_network::merge_network4<Reg, Item>(a4, a5, a6, a7);
-						origami_utils::store<Reg, stream>(a4, (Reg*)C1); origami_utils::store<Reg, stream>(a5, (Reg*)C1 + 1);
-					}
-					else if constexpr (nreg == 3) {
-						origami_utils::load<Reg>(a6, (Reg*)opposite1); origami_utils::load<Reg>(a7, (Reg*)opposite1 + 1); origami_utils::load<Reg>(a8, (Reg*)opposite1 + 2);
-						origami_merge_network::merge_network6<Reg, Item>(a6, a7, a8, a9, a10, a11);
-						origami_utils::store<Reg, stream>(a6, (Reg*)C1); origami_utils::store<Reg, stream>(a7, (Reg*)C1 + 1); origami_utils::store<Reg, stream>(a8, (Reg*)C1 + 2);
-					}
-					else if constexpr (nreg == 4) {
-						origami_utils::load<Reg>(a8, (Reg*)opposite1); origami_utils::load<Reg>(a9, (Reg*)opposite1 + 1); origami_utils::load<Reg>(a10, (Reg*)opposite1 + 2); origami_utils::load<Reg>(a11, (Reg*)opposite1 + 3);
-						origami_merge_network::merge_network8<Reg, Item>(a8, a9, a10, a11, a12, a13, a14, a15);
-						origami_utils::store<Reg, stream>(a8, (Reg*)C1); origami_utils::store<Reg, stream>(a9, (Reg*)C1 + 1); origami_utils::store<Reg, stream>(a10, (Reg*)C1 + 2); origami_utils::store<Reg, stream>(a11, (Reg*)C1 + 3);
-					}
-					opposite1 += INC;
-					C1 += INC;
-				}
-				if constexpr (nreg == 1) origami_utils::store<Reg, stream>(a3, (Reg*)C1);
 				else if constexpr (nreg == 2) {
-					origami_utils::store<Reg, stream>(a6, (Reg*)C1);
-					origami_utils::store<Reg, stream>(a7, (Reg*)C1 + 1);
+					origami_utils::load<Reg>(a4, (Reg*)opposite1); origami_utils::load<Reg>(a5, (Reg*)opposite1 + 1);
+					origami_merge_network::merge_network4<Reg, Item>(a4, a5, a6, a7);
+					origami_utils::store<Reg, stream>(a4, (Reg*)C1); origami_utils::store<Reg, stream>(a5, (Reg*)C1 + 1);
 				}
 				else if constexpr (nreg == 3) {
-					origami_utils::store<Reg, stream>(a9, (Reg*)C1);
-					origami_utils::store<Reg, stream>(a10, (Reg*)C1 + 1);
-					origami_utils::store<Reg, stream>(a11, (Reg*)C1 + 2);
+					origami_utils::load<Reg>(a6, (Reg*)opposite1); origami_utils::load<Reg>(a7, (Reg*)opposite1 + 1); origami_utils::load<Reg>(a8, (Reg*)opposite1 + 2);
+					origami_merge_network::merge_network6<Reg, Item>(a6, a7, a8, a9, a10, a11);
+					origami_utils::store<Reg, stream>(a6, (Reg*)C1); origami_utils::store<Reg, stream>(a7, (Reg*)C1 + 1); origami_utils::store<Reg, stream>(a8, (Reg*)C1 + 2);
 				}
 				else if constexpr (nreg == 4) {
-					origami_merge_network::merge_network4<Reg, Item>(a12, a13, a14, a15);
-					origami_utils::store<Reg, stream>(a12, (Reg*)C1);
-					origami_utils::store<Reg, stream>(a13, (Reg*)C1 + 1);
-					origami_utils::store<Reg, stream>(a14, (Reg*)C1 + 2);
-					origami_utils::store<Reg, stream>(a15, (Reg*)C1 + 3);
+					origami_utils::load<Reg>(a8, (Reg*)opposite1); origami_utils::load<Reg>(a9, (Reg*)opposite1 + 1); origami_utils::load<Reg>(a10, (Reg*)opposite1 + 2); origami_utils::load<Reg>(a11, (Reg*)opposite1 + 3);
+					origami_merge_network::merge_network8<Reg, Item>(a8, a9, a10, a11, a12, a13, a14, a15);
+					origami_utils::store<Reg, stream>(a8, (Reg*)C1); origami_utils::store<Reg, stream>(a9, (Reg*)C1 + 1); origami_utils::store<Reg, stream>(a10, (Reg*)C1 + 2); origami_utils::store<Reg, stream>(a11, (Reg*)C1 + 3);
 				}
+				opposite1 += INC;
 				C1 += INC;
-			//}
+			}
+			if constexpr (nreg == 1) origami_utils::store<Reg, stream>(a3, (Reg*)C1);
+			else if constexpr (nreg == 2) {
+				origami_utils::store<Reg, stream>(a6, (Reg*)C1);
+				origami_utils::store<Reg, stream>(a7, (Reg*)C1 + 1);
+			}
+			else if constexpr (nreg == 3) {
+				origami_utils::store<Reg, stream>(a9, (Reg*)C1);
+				origami_utils::store<Reg, stream>(a10, (Reg*)C1 + 1);
+				origami_utils::store<Reg, stream>(a11, (Reg*)C1 + 2);
+			}
+			else if constexpr (nreg == 4) {
+				origami_merge_network::merge_network4<Reg, Item>(a12, a13, a14, a15);
+				origami_utils::store<Reg, stream>(a12, (Reg*)C1);
+				origami_utils::store<Reg, stream>(a13, (Reg*)C1 + 1);
+				origami_utils::store<Reg, stream>(a14, (Reg*)C1 + 2);
+				origami_utils::store<Reg, stream>(a15, (Reg*)C1 + 3);
+			}
+			C1 += INC;
 		}
 		else if (loadFrom1 == endX1 || loadFrom1 == endY1) {
 			//printf("1 finished first\n");
@@ -1964,81 +1447,52 @@ namespace origami_merger {
 			Item* endOpposite1 = (loadFrom1 == endX1) ? endY1 : endX1;
 
 			
-			/*Item last;
-			if constexpr (nreg == 1) last = origami_utils::get_last_item<Reg, Item>(a3);
-			if constexpr (nreg == 2) last = origami_utils::get_last_item<Reg, Item>(a7);
-			if constexpr (nreg == 3) last = origami_utils::get_last_item<Reg, Item>(a11);
-			if constexpr (nreg == 4) last = origami_utils::get_last_item<Reg, Item>(a15);
-
-			if (last <= *opposite1 && (endOpposite1 - opposite1) >= MEMCPY_THRESH) {
+			
+			while (opposite1 != endOpposite1) {
+				_mm_prefetch((char*)(opposite1 + 64), _MM_HINT_T2);
 				if constexpr (nreg == 1) {
-					origami_utils::store<Reg, stream>(a3, (Reg*)C1);
+					origami_utils::load<Reg>(a2, (Reg*)opposite1);
+					origami_merge_network::merge_network2<Reg, Item>(a2, a3);
+					origami_utils::store<Reg, stream>(a2, (Reg*)C1);
 				}
-				if constexpr (nreg == 2) {
-					origami_utils::store<Reg, stream>(a6, (Reg*)C1);
-					origami_utils::store<Reg, stream>(a7, (Reg*)C1 + 1);
-				}
-				if constexpr (nreg == 3) {
-					origami_utils::store<Reg, stream>(a9, (Reg*)C1);
-					origami_utils::store<Reg, stream>(a10, (Reg*)C1 + 1);
-					origami_utils::store<Reg, stream>(a11, (Reg*)C1 + 2);
-				}
-				if constexpr (nreg == 4) {
-					origami_utils::store<Reg, stream>(a12, (Reg*)C1);
-					origami_utils::store<Reg, stream>(a13, (Reg*)C1 + 1);
-					origami_utils::store<Reg, stream>(a14, (Reg*)C1 + 2);
-					origami_utils::store<Reg, stream>(a15, (Reg*)C1 + 3);
-				}
-				C1 += INC;
-				memcpy(C1, opposite1, sizeof(Item) * (endOpposite1 - opposite1));
-			}
-			else {*/
-				while (opposite1 != endOpposite1) {
-					_mm_prefetch((char*)(opposite1 + 64), _MM_HINT_T2);
-					if constexpr (nreg == 1) {
-						origami_utils::load<Reg>(a2, (Reg*)opposite1);
-						origami_merge_network::merge_network2<Reg, Item>(a2, a3);
-						origami_utils::store<Reg, stream>(a2, (Reg*)C1);
-					}
-					else if constexpr (nreg == 2) {
-						origami_utils::load<Reg>(a4, (Reg*)opposite1); origami_utils::load<Reg>(a5, (Reg*)opposite1 + 1);
-						origami_merge_network::merge_network4<Reg, Item>(a4, a5, a6, a7);
-						origami_utils::store<Reg, stream>(a4, (Reg*)C1); origami_utils::store<Reg, stream>(a5, (Reg*)C1 + 1);
-					}
-					else if constexpr (nreg == 3) {
-						origami_utils::load<Reg>(a6, (Reg*)opposite1); origami_utils::load<Reg>(a7, (Reg*)opposite1 + 1); origami_utils::load<Reg>(a8, (Reg*)opposite1 + 2);
-						origami_merge_network::merge_network6<Reg, Item>(a6, a7, a8, a9, a10, a11);
-						origami_utils::store<Reg, stream>(a6, (Reg*)C1); origami_utils::store<Reg, stream>(a7, (Reg*)C1 + 1); origami_utils::store<Reg, stream>(a8, (Reg*)C1 + 2);
-					}
-					else if constexpr (nreg == 4) {
-						origami_utils::load<Reg>(a8, (Reg*)opposite1); origami_utils::load<Reg>(a9, (Reg*)opposite1 + 1); origami_utils::load<Reg>(a10, (Reg*)opposite1 + 2); 	origami_utils::load<Reg>(a11, (Reg*)opposite1 + 3);
-
-						origami_merge_network::merge_network8<Reg, Item>(a8, a9, a10, a11, a12, a13, a14, a15);
-						origami_utils::store<Reg, stream>(a8, (Reg*)C1); origami_utils::store<Reg, stream>(a9, (Reg*)C1 + 1);
-						origami_utils::store<Reg, stream>(a10, (Reg*)C1 + 2); origami_utils::store<Reg, stream>(a11, (Reg*)C1 + 3);
-					}
-					opposite1 += INC;
-					C1 += INC;
-				}
-				if constexpr (nreg == 1) origami_utils::store<Reg, stream>(a3, (Reg*)C1);
 				else if constexpr (nreg == 2) {
-					origami_utils::store<Reg, stream>(a6, (Reg*)C1);
-					origami_utils::store<Reg, stream>(a7, (Reg*)C1 + 1);
+					origami_utils::load<Reg>(a4, (Reg*)opposite1); origami_utils::load<Reg>(a5, (Reg*)opposite1 + 1);
+					origami_merge_network::merge_network4<Reg, Item>(a4, a5, a6, a7);
+					origami_utils::store<Reg, stream>(a4, (Reg*)C1); origami_utils::store<Reg, stream>(a5, (Reg*)C1 + 1);
 				}
 				else if constexpr (nreg == 3) {
-					origami_utils::store<Reg, stream>(a9, (Reg*)C1);
-					origami_utils::store<Reg, stream>(a10, (Reg*)C1 + 1);
-					origami_utils::store<Reg, stream>(a11, (Reg*)C1 + 2);
+					origami_utils::load<Reg>(a6, (Reg*)opposite1); origami_utils::load<Reg>(a7, (Reg*)opposite1 + 1); origami_utils::load<Reg>(a8, (Reg*)opposite1 + 2);
+					origami_merge_network::merge_network6<Reg, Item>(a6, a7, a8, a9, a10, a11);
+					origami_utils::store<Reg, stream>(a6, (Reg*)C1); origami_utils::store<Reg, stream>(a7, (Reg*)C1 + 1); origami_utils::store<Reg, stream>(a8, (Reg*)C1 + 2);
 				}
 				else if constexpr (nreg == 4) {
-					origami_merge_network::merge_network4<Reg, Item>(a12, a13, a14, a15);
-					origami_utils::store<Reg, stream>(a12, (Reg*)C1);
-					origami_utils::store<Reg, stream>(a13, (Reg*)C1 + 1);
-					origami_utils::store<Reg, stream>(a14, (Reg*)C1 + 2);
-					origami_utils::store<Reg, stream>(a15, (Reg*)C1 + 3);
+					origami_utils::load<Reg>(a8, (Reg*)opposite1); origami_utils::load<Reg>(a9, (Reg*)opposite1 + 1); origami_utils::load<Reg>(a10, (Reg*)opposite1 + 2); 	origami_utils::load<Reg>(a11, (Reg*)opposite1 + 3);
+
+					origami_merge_network::merge_network8<Reg, Item>(a8, a9, a10, a11, a12, a13, a14, a15);
+					origami_utils::store<Reg, stream>(a8, (Reg*)C1); origami_utils::store<Reg, stream>(a9, (Reg*)C1 + 1);
+					origami_utils::store<Reg, stream>(a10, (Reg*)C1 + 2); origami_utils::store<Reg, stream>(a11, (Reg*)C1 + 3);
 				}
+				opposite1 += INC;
 				C1 += INC;
-			//}
+			}
+			if constexpr (nreg == 1) origami_utils::store<Reg, stream>(a3, (Reg*)C1);
+			else if constexpr (nreg == 2) {
+				origami_utils::store<Reg, stream>(a6, (Reg*)C1);
+				origami_utils::store<Reg, stream>(a7, (Reg*)C1 + 1);
+			}
+			else if constexpr (nreg == 3) {
+				origami_utils::store<Reg, stream>(a9, (Reg*)C1);
+				origami_utils::store<Reg, stream>(a10, (Reg*)C1 + 1);
+				origami_utils::store<Reg, stream>(a11, (Reg*)C1 + 2);
+			}
+			else if constexpr (nreg == 4) {
+				origami_merge_network::merge_network4<Reg, Item>(a12, a13, a14, a15);
+				origami_utils::store<Reg, stream>(a12, (Reg*)C1);
+				origami_utils::store<Reg, stream>(a13, (Reg*)C1 + 1);
+				origami_utils::store<Reg, stream>(a14, (Reg*)C1 + 2);
+				origami_utils::store<Reg, stream>(a15, (Reg*)C1 + 3);
+			}
+			C1 += INC;
 
 			while (loadFrom0 != endX0 && loadFrom0 != endY0) {
 				Item comp1 = *loadFrom0;
@@ -2092,79 +1546,49 @@ namespace origami_merger {
 			C0 += INC;
 			Item* endOpposite0 = (loadFrom0 == endX0) ? endY0 : endX0;
 
-			
-			/*if constexpr (nreg == 1) last = origami_utils::get_last_item<Reg, Item>(a1);
-			if constexpr (nreg == 2) last = origami_utils::get_last_item<Reg, Item>(a3);
-			if constexpr (nreg == 3) last = origami_utils::get_last_item<Reg, Item>(a5);
-			if constexpr (nreg == 4) last = origami_utils::get_last_item<Reg, Item>(a7);
-
-			if (last <= *opposite0 && (endOpposite0 - opposite0) >= MEMCPY_THRESH) {
+			while (opposite0 != endOpposite0) {
+				_mm_prefetch((char*)(opposite0 + 64), _MM_HINT_T2);
 				if constexpr (nreg == 1) {
-					origami_utils::store<Reg, stream>(a1, (Reg*)C0);
+					origami_utils::load<Reg>(a0, (Reg*)opposite0);
+					origami_merge_network::merge_network2<Reg, Item>(a0, a1);
+					origami_utils::store<Reg, stream>(a0, (Reg*)C0);
 				}
-				if constexpr (nreg == 2) {
-					origami_utils::store<Reg, stream>(a2, (Reg*)C0);
-					origami_utils::store<Reg, stream>(a3, (Reg*)C0 + 1);
-				}
-				if constexpr (nreg == 3) {
-					origami_utils::store<Reg, stream>(a3, (Reg*)C0);
-					origami_utils::store<Reg, stream>(a4, (Reg*)C0 + 1);
-					origami_utils::store<Reg, stream>(a5, (Reg*)C0 + 2);
-				}
-				if constexpr (nreg == 4) {
-					origami_utils::store<Reg, stream>(a4, (Reg*)C0);
-					origami_utils::store<Reg, stream>(a5, (Reg*)C0 + 1);
-					origami_utils::store<Reg, stream>(a6, (Reg*)C0 + 2);
-					origami_utils::store<Reg, stream>(a7, (Reg*)C0 + 3);
-				}
-				C0 += INC;
-				memcpy(C0, opposite0, sizeof(Item) * (endOpposite0 - opposite0));
-			}
-			else {*/
-				while (opposite0 != endOpposite0) {
-					_mm_prefetch((char*)(opposite0 + 64), _MM_HINT_T2);
-					if constexpr (nreg == 1) {
-						origami_utils::load<Reg>(a0, (Reg*)opposite0);
-						origami_merge_network::merge_network2<Reg, Item>(a0, a1);
-						origami_utils::store<Reg, stream>(a0, (Reg*)C0);
-					}
-					else if constexpr (nreg == 2) {
-						origami_utils::load<Reg>(a0, (Reg*)opposite0); origami_utils::load<Reg>(a1, (Reg*)opposite0 + 1);
-						origami_merge_network::merge_network4<Reg, Item>(a0, a1, a2, a3);
-						origami_utils::store<Reg, stream>(a0, (Reg*)C0); origami_utils::store<Reg, stream>(a1, (Reg*)C0 + 1);
-					}
-					else if constexpr (nreg == 3) {
-						origami_utils::load<Reg>(a0, (Reg*)opposite0); origami_utils::load<Reg>(a1, (Reg*)opposite0 + 1); origami_utils::load<Reg>(a2, (Reg*)opposite0 + 2);
-						origami_merge_network::merge_network6<Reg, Item>(a0, a1, a2, a3, a4, a5);
-						origami_utils::store<Reg, stream>(a0, (Reg*)C0); origami_utils::store<Reg, stream>(a1, (Reg*)C0 + 1); origami_utils::store<Reg, stream>(a2, (Reg*)C0 + 2);
-					}
-					else if constexpr (nreg == 4) {
-						origami_utils::load<Reg>(a0, (Reg*)opposite0); origami_utils::load<Reg>(a1, (Reg*)opposite0 + 1);
-						origami_utils::load<Reg>(a2, (Reg*)opposite0 + 2); origami_utils::load<Reg>(a3, (Reg*)opposite0 + 3);
-						origami_merge_network::merge_network8<Reg, Item>(a0, a1, a2, a3, a4, a5, a6, a7);
-						origami_utils::store<Reg, stream>(a0, (Reg*)C0); origami_utils::store<Reg, stream>(a1, (Reg*)C0 + 1);
-						origami_utils::store<Reg, stream>(a2, (Reg*)C0 + 2); origami_utils::store<Reg, stream>(a3, (Reg*)C0 + 3);
-					}
-					opposite0 += INC;
-					C0 += INC;
-				}
-				if constexpr (nreg == 1) origami_utils::store<Reg, stream>(a1, (Reg*)C0);
 				else if constexpr (nreg == 2) {
-					origami_utils::store<Reg, stream>(a2, (Reg*)C0);
-					origami_utils::store<Reg, stream>(a3, (Reg*)C0 + 1);
+					origami_utils::load<Reg>(a0, (Reg*)opposite0); origami_utils::load<Reg>(a1, (Reg*)opposite0 + 1);
+					origami_merge_network::merge_network4<Reg, Item>(a0, a1, a2, a3);
+					origami_utils::store<Reg, stream>(a0, (Reg*)C0); origami_utils::store<Reg, stream>(a1, (Reg*)C0 + 1);
 				}
 				else if constexpr (nreg == 3) {
-					origami_utils::store<Reg, stream>(a3, (Reg*)C0);
-					origami_utils::store<Reg, stream>(a4, (Reg*)C0 + 1);
-					origami_utils::store<Reg, stream>(a5, (Reg*)C0 + 2);
+					origami_utils::load<Reg>(a0, (Reg*)opposite0); origami_utils::load<Reg>(a1, (Reg*)opposite0 + 1); origami_utils::load<Reg>(a2, (Reg*)opposite0 + 2);
+					origami_merge_network::merge_network6<Reg, Item>(a0, a1, a2, a3, a4, a5);
+					origami_utils::store<Reg, stream>(a0, (Reg*)C0); origami_utils::store<Reg, stream>(a1, (Reg*)C0 + 1); origami_utils::store<Reg, stream>(a2, (Reg*)C0 + 2);
 				}
 				else if constexpr (nreg == 4) {
-					origami_merge_network::merge_network4<Reg, Item>(a4, a5, a6, a7);
-					origami_utils::store<Reg, stream>(a4, (Reg*)C0); origami_utils::store<Reg, stream>(a5, (Reg*)C0 + 1);
-					origami_utils::store<Reg, stream>(a6, (Reg*)C0 + 2); origami_utils::store<Reg, stream>(a7, (Reg*)C0 + 3);
+					origami_utils::load<Reg>(a0, (Reg*)opposite0); origami_utils::load<Reg>(a1, (Reg*)opposite0 + 1);
+					origami_utils::load<Reg>(a2, (Reg*)opposite0 + 2); origami_utils::load<Reg>(a3, (Reg*)opposite0 + 3);
+					origami_merge_network::merge_network8<Reg, Item>(a0, a1, a2, a3, a4, a5, a6, a7);
+					origami_utils::store<Reg, stream>(a0, (Reg*)C0); origami_utils::store<Reg, stream>(a1, (Reg*)C0 + 1);
+					origami_utils::store<Reg, stream>(a2, (Reg*)C0 + 2); origami_utils::store<Reg, stream>(a3, (Reg*)C0 + 3);
 				}
+				opposite0 += INC;
 				C0 += INC;
-			//}
+			}
+			if constexpr (nreg == 1) origami_utils::store<Reg, stream>(a1, (Reg*)C0);
+			else if constexpr (nreg == 2) {
+				origami_utils::store<Reg, stream>(a2, (Reg*)C0);
+				origami_utils::store<Reg, stream>(a3, (Reg*)C0 + 1);
+			}
+			else if constexpr (nreg == 3) {
+				origami_utils::store<Reg, stream>(a3, (Reg*)C0);
+				origami_utils::store<Reg, stream>(a4, (Reg*)C0 + 1);
+				origami_utils::store<Reg, stream>(a5, (Reg*)C0 + 2);
+			}
+			else if constexpr (nreg == 4) {
+				origami_merge_network::merge_network4<Reg, Item>(a4, a5, a6, a7);
+				origami_utils::store<Reg, stream>(a4, (Reg*)C0); origami_utils::store<Reg, stream>(a5, (Reg*)C0 + 1);
+				origami_utils::store<Reg, stream>(a6, (Reg*)C0 + 2); origami_utils::store<Reg, stream>(a7, (Reg*)C0 + 3);
+			}
+			C0 += INC;
 		}
 	}
 
@@ -2180,44 +1604,7 @@ namespace origami_merger {
 		Item* __restrict X2 = E, * __restrict Y2 = F, * __restrict C2 = I;
 		Item* __restrict endX2 = E + lenE, * __restrict endY2 = F + lenF;
 
-		// CASE: already sorted
-		/*if (*(endX0 - 1) <= *Y0) {
-			memcpy(C0, X0, sizeof(Item) * lenA);
-			memcpy(C0 + lenA, Y0, sizeof(Item) * lenB);
-			mergebl2_vectorized_2x<Reg, stream, nreg, Item>(C, lenC, D, lenD, E, lenE, F, lenF, H, I);
-			return;
-		}
-		else if (*(endY0 - 1) <= *X0) {
-			memcpy(C0, Y0, sizeof(Item) * lenB);
-			memcpy(C0 + lenB, X0, sizeof(Item) * lenA);
-			mergebl2_vectorized_2x<Reg, stream, nreg, Item>(C, lenC, D, lenD, E, lenE, F, lenF, H, I);
-			return;
-		}
-		else if (*(endX1 - 1) <= *Y1) {
-			memcpy(C1, X1, sizeof(Item) * lenC);
-			memcpy(C1 + lenC, Y1, sizeof(Item) * lenD);
-			mergebl2_vectorized_2x<Reg, stream, nreg, Item>(A, lenA, B, lenB, E, lenE, F, lenF, G, I);
-			return;
-		}
-		else if (*(endY1 - 1) <= *X1) {
-			memcpy(C1, Y1, sizeof(Item) * lenD);
-			memcpy(C1 + lenD, X1, sizeof(Item) * lenC);
-			mergebl2_vectorized_2x<Reg, stream, nreg, Item>(A, lenA, B, lenB, E, lenE, F, lenF, G, I);
-			return;
-		}
-		else if (*(endX2 - 1) <= *Y2) {
-			memcpy(C2, X2, sizeof(Item) * lenE);
-			memcpy(C2 + lenE, Y2, sizeof(Item) * lenF);
-			mergebl2_vectorized_2x<Reg, stream, nreg, Item>(A, lenA, B, lenB, C, lenC, D, lenD, G, H);
-			return;
-		}
-		else if (*(endY2 - 1) <= *X2) {
-			memcpy(C2, Y2, sizeof(Item) * lenF);
-			memcpy(C2 + lenF, X2, sizeof(Item) * lenE);
-			mergebl2_vectorized_2x<Reg, stream, nreg, Item>(A, lenA, B, lenB, C, lenC, D, lenD, G, H);
-			return;
-		}*/
-
+		
 		register Reg a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17, a18, a19, a20, a21, a22, a23;
 		
 		constexpr ui INC = sizeof(Reg) / sizeof(Item) * nreg;
@@ -2457,21 +1844,15 @@ namespace origami_merger {
 			origami_utils::store<Reg, stream>(a0, (Reg*)C0); C0 += INC;
 			Item* endOpposite0 = (loadFrom0 == endX0) ? endY0 : endX0;
 
-			/*Item last = origami_utils::get_last_item<Reg, Item>(a1);
-			if (last < *opposite0 && (endOpposite0 - opposite0) >= MEMCPY_THRESH) {
-				origami_utils::store<Reg, stream>(a1, (Reg*)C0); C0 += INC;
-				memcpy(C0, opposite0, sizeof(Item) * (endOpposite0 - opposite0));
+			
+			while (opposite0 != endOpposite0) {
+				_mm_prefetch((char*)(opposite0 + 64), _MM_HINT_T2);
+				origami_utils::load<Reg>(a0, (Reg*)opposite0);
+				opposite0 += INC;
+				origami_utils::rswap<Reg, Item>(a0, a1);
+				origami_utils::store<Reg, stream>(a0, (Reg*)C0); C0 += INC;
 			}
-			else {*/
-				while (opposite0 != endOpposite0) {
-					_mm_prefetch((char*)(opposite0 + 64), _MM_HINT_T2);
-					origami_utils::load<Reg>(a0, (Reg*)opposite0);
-					opposite0 += INC;
-					origami_utils::rswap<Reg, Item>(a0, a1);
-					origami_utils::store<Reg, stream>(a0, (Reg*)C0); C0 += INC;
-				}
-				origami_utils::store<Reg, stream>(a1, (Reg*)C0); C0 += INC;
-			//}
+			origami_utils::store<Reg, stream>(a1, (Reg*)C0); C0 += INC;
 						
 			// process rest of the two
 			while (loadFrom1 != endX1 && loadFrom1 != endY1 && loadFrom2 != endX2 && loadFrom2 != endY2) {
@@ -2523,21 +1904,14 @@ namespace origami_merger {
 			origami_utils::store<Reg, stream>(a2, (Reg*)C1); C1 += INC;
 			Item* endOpposite1 = (loadFrom1 == endX1) ? endY1 : endX1;
 
-			/*last = origami_utils::get_last_item<Reg, Item>(a3);
-			if (last < *opposite1 && (endOpposite1 - opposite1) >= MEMCPY_THRESH) {
-				origami_utils::store<Reg, stream>(a3, (Reg*)C1); 	C1 += INC;
-				memcpy(C1, opposite1, sizeof(Item) * (endOpposite1 - opposite1));
+			while (opposite1 != endOpposite1) {
+				_mm_prefetch((char*)(opposite1 + 64), _MM_HINT_T2);
+				origami_utils::load<Reg>(a2, (Reg*)opposite1);
+				opposite1 += INC;
+				origami_utils::rswap<Reg, Item>(a2, a3);
+				origami_utils::store<Reg, stream>(a2, (Reg*)C1); C1 += INC;
 			}
-			else {*/
-				while (opposite1 != endOpposite1) {
-					_mm_prefetch((char*)(opposite1 + 64), _MM_HINT_T2);
-					origami_utils::load<Reg>(a2, (Reg*)opposite1);
-					opposite1 += INC;
-					origami_utils::rswap<Reg, Item>(a2, a3);
-					origami_utils::store<Reg, stream>(a2, (Reg*)C1); C1 += INC;
-				}
-				origami_utils::store<Reg, stream>(a3, (Reg*)C1); C1 += INC;
-			//}
+			origami_utils::store<Reg, stream>(a3, (Reg*)C1); C1 += INC;
 
 			while (loadFrom2 != endX2 && loadFrom2 != endY2) {
 				Item comp1 = *loadFrom2;
@@ -2556,22 +1930,14 @@ namespace origami_merger {
 			origami_utils::store<Reg, stream>(a4, (Reg*)C2); C2 += INC;
 			Item* endOpposite2 = (loadFrom2 == endX2) ? endY2 : endX2;
 
-			/*last = origami_utils::get_last_item<Reg, Item>(a5);
-			if (last < *opposite2 && (endOpposite2 - opposite2) >= MEMCPY_THRESH) {
-				origami_utils::store<Reg, stream>(a5, (Reg*)C2);
-				C2 += INC;
-				memcpy(C2, opposite2, sizeof(Item) * (endOpposite2 - opposite2));
+			while (opposite2 != endOpposite2) {
+				_mm_prefetch((char*)(opposite2 + 64), _MM_HINT_T2);
+				origami_utils::load<Reg>(a4, (Reg*)opposite2);
+				opposite2 += INC;
+				origami_utils::rswap<Reg, Item>(a4, a5);
+				origami_utils::store<Reg, stream>(a4, (Reg*)C2); C2 += INC;
 			}
-			else {*/
-				while (opposite2 != endOpposite2) {
-					_mm_prefetch((char*)(opposite2 + 64), _MM_HINT_T2);
-					origami_utils::load<Reg>(a4, (Reg*)opposite2);
-					opposite2 += INC;
-					origami_utils::rswap<Reg, Item>(a4, a5);
-					origami_utils::store<Reg, stream>(a4, (Reg*)C2); C2 += INC;
-				}
-				origami_utils::store<Reg, stream>(a5, (Reg*)C2); C2 += INC;
-			//}
+			origami_utils::store<Reg, stream>(a5, (Reg*)C2); C2 += INC;
 		}
 		else if (loadFrom1 == endX1 || loadFrom1 == endY1) {
 			//printf("1 finished first\n");
@@ -2579,22 +1945,14 @@ namespace origami_merger {
 			origami_utils::store<Reg, stream>(a2, (Reg*)C1); C1 += INC;
 			Item* endOpposite1 = (loadFrom1 == endX1) ? endY1 : endX1;
 
-			/*Item last = origami_utils::get_last_item<Reg, Item>(a3);
-			if (last < *opposite1 && (endOpposite1 - opposite1) >= MEMCPY_THRESH) {
-				origami_utils::store<Reg, stream>(a3, (Reg*)C1);
-				C1 += INC;
-				memcpy(C1, opposite1, sizeof(Item) * (endOpposite1 - opposite1));
+			while (opposite1 != endOpposite1) {
+				_mm_prefetch((char*)(opposite1 + 64), _MM_HINT_T2);
+				origami_utils::load<Reg>(a2, (Reg*)opposite1);
+				opposite1 += INC;
+				origami_utils::rswap<Reg, Item>(a2, a3);
+				origami_utils::store<Reg, stream>(a2, (Reg*)C1); C1 += INC;
 			}
-			else {*/
-				while (opposite1 != endOpposite1) {
-					_mm_prefetch((char*)(opposite1 + 64), _MM_HINT_T2);
-					origami_utils::load<Reg>(a2, (Reg*)opposite1);
-					opposite1 += INC;
-					origami_utils::rswap<Reg, Item>(a2, a3);
-					origami_utils::store<Reg, stream>(a2, (Reg*)C1); C1 += INC;
-				}
-				origami_utils::store<Reg, stream>(a3, (Reg*)C1); C1 += INC;
-			//}
+			origami_utils::store<Reg, stream>(a3, (Reg*)C1); C1 += INC;
 
 			// process rest of the two
 			while (loadFrom0 != endX0 && loadFrom0 != endY0 && loadFrom2 != endX2 && loadFrom2 != endY2) {
@@ -2647,22 +2005,14 @@ namespace origami_merger {
 			origami_utils::store<Reg, stream>(a0, (Reg*)C0); C0 += INC;
 			Item* endOpposite0 = (loadFrom0 == endX0) ? endY0 : endX0;
 
-			/*last = origami_utils::get_last_item<Reg, Item>(a1);
-			if (last < *opposite1 && (endOpposite0 - opposite0) >= MEMCPY_THRESH) {
-				origami_utils::store<Reg, stream>(a1, (Reg*)C0);
-				C0 += INC;
-				memcpy(C0, opposite0, sizeof(Item) * (endOpposite0 - opposite0));
+			while (opposite0 != endOpposite0) {
+				_mm_prefetch((char*)(opposite0 + 64), _MM_HINT_T2);
+				origami_utils::load<Reg>(a0, (Reg*)opposite0);
+				opposite0 += INC;
+				origami_utils::rswap<Reg, Item>(a0, a1);
+				origami_utils::store<Reg, stream>(a0, (Reg*)C0); C0 += INC;
 			}
-			else {*/
-				while (opposite0 != endOpposite0) {
-					_mm_prefetch((char*)(opposite0 + 64), _MM_HINT_T2);
-					origami_utils::load<Reg>(a0, (Reg*)opposite0);
-					opposite0 += INC;
-					origami_utils::rswap<Reg, Item>(a0, a1);
-					origami_utils::store<Reg, stream>(a0, (Reg*)C0); C0 += INC;
-				}
-				origami_utils::store<Reg, stream>(a1, (Reg*)C0); C0 += INC;
-			//}
+			origami_utils::store<Reg, stream>(a1, (Reg*)C0); C0 += INC;
 
 			while (loadFrom2 != endX2 && loadFrom2 != endY2) {
 				Item comp1 = *loadFrom2;
@@ -2681,22 +2031,14 @@ namespace origami_merger {
 			origami_utils::store<Reg, stream>(a4, (Reg*)C2); C2 += INC;
 			Item* endOpposite2 = (loadFrom2 == endX2) ? endY2 : endX2;
 
-			/*last = origami_utils::get_last_item<Reg, Item>(a5);
-			if (last < *opposite2 && (endOpposite2 - opposite2) >= MEMCPY_THRESH) {
-				origami_utils::store<Reg, stream>(a5, (Reg*)C2);
-				C2 += INC;
-				memcpy(C2, opposite2, sizeof(Item) * (endOpposite2 - opposite2));
+			while (opposite2 != endOpposite2) {
+				_mm_prefetch((char*)(opposite2 + 64), _MM_HINT_T2);
+				origami_utils::load<Reg>(a4, (Reg*)opposite2);
+				opposite2 += INC;
+				origami_utils::rswap<Reg, Item>(a4, a5);
+				origami_utils::store<Reg, stream>(a4, (Reg*)C2); C2 += INC;
 			}
-			else {*/
-				while (opposite2 != endOpposite2) {
-					_mm_prefetch((char*)(opposite2 + 64), _MM_HINT_T2);
-					origami_utils::load<Reg>(a4, (Reg*)opposite2);
-					opposite2 += INC;
-					origami_utils::rswap<Reg, Item>(a4, a5);
-					origami_utils::store<Reg, stream>(a4, (Reg*)C2); C2 += INC;
-				}
-				origami_utils::store<Reg, stream>(a5, (Reg*)C2); C2 += INC;
-			//}
+			origami_utils::store<Reg, stream>(a5, (Reg*)C2); C2 += INC;
 		}
 		else if (loadFrom2 == endX2 || loadFrom2 == endY2) {
 			//printf("2 finished first\n");
@@ -2704,22 +2046,14 @@ namespace origami_merger {
 			origami_utils::store<Reg, stream>(a4, (Reg*)C2); C2 += INC;
 			Item* endOpposite2 = (loadFrom2 == endX2) ? endY2 : endX2;
 
-			/*Item last = origami_utils::get_last_item<Reg, Item>(a5);
-			if (last < *opposite2 && (endOpposite2 - opposite2) >= MEMCPY_THRESH) {
-				origami_utils::store<Reg, stream>(a5, (Reg*)C2);
-				C2 += INC;
-				memcpy(C2, opposite2, sizeof(Item) * (endOpposite2 - opposite2));
+			while (opposite2 != endOpposite2) {
+				_mm_prefetch((char*)(opposite2 + 64), _MM_HINT_T2);
+				origami_utils::load<Reg>(a4, (Reg*)opposite2);
+				opposite2 += INC;
+				origami_utils::rswap<Reg, Item>(a4, a5);
+				origami_utils::store<Reg, stream>(a4, (Reg*)C2); C2 += INC;
 			}
-			else {*/
-				while (opposite2 != endOpposite2) {
-					_mm_prefetch((char*)(opposite2 + 64), _MM_HINT_T2);
-					origami_utils::load<Reg>(a4, (Reg*)opposite2);
-					opposite2 += INC;
-					origami_utils::rswap<Reg, Item>(a4, a5);
-					origami_utils::store<Reg, stream>(a4, (Reg*)C2); C2 += INC;
-				}
-				origami_utils::store<Reg, stream>(a5, (Reg*)C2); C2 += INC;
-			//}
+			origami_utils::store<Reg, stream>(a5, (Reg*)C2); C2 += INC;
 
 			// process rest of the two
 			while (loadFrom0 != endX0 && loadFrom0 != endY0 && loadFrom1 != endX1 && loadFrom1 != endY1) {
@@ -2770,22 +2104,14 @@ namespace origami_merger {
 			origami_utils::store<Reg, stream>(a0, (Reg*)C0); C0 += INC;
 			Item* endOpposite0 = (loadFrom0 == endX0) ? endY0 : endX0;
 
-			/*last = origami_utils::get_last_item<Reg, Item>(a1);
-			if (last < *opposite0 && (endOpposite0 - opposite0) >= MEMCPY_THRESH) {
-				origami_utils::store<Reg, stream>(a1, (Reg*)C0);
-				C0 += INC;
-				memcpy(C0, opposite0, sizeof(Item) * (endOpposite0 - opposite0));
+			while (opposite0 != endOpposite0) {
+				_mm_prefetch((char*)(opposite0 + 64), _MM_HINT_T2);
+				origami_utils::load<Reg>(a0, (Reg*)opposite0);
+				opposite0 += INC;
+				origami_utils::rswap<Reg, Item>(a0, a1);
+				origami_utils::store<Reg, stream>(a0, (Reg*)C0); C0 += INC;
 			}
-			else {*/
-				while (opposite0 != endOpposite0) {
-					_mm_prefetch((char*)(opposite0 + 64), _MM_HINT_T2);
-					origami_utils::load<Reg>(a0, (Reg*)opposite0);
-					opposite0 += INC;
-					origami_utils::rswap<Reg, Item>(a0, a1);
-					origami_utils::store<Reg, stream>(a0, (Reg*)C0); C0 += INC;
-				}
-				origami_utils::store<Reg, stream>(a1, (Reg*)C0); C0 += INC;
-			//}
+			origami_utils::store<Reg, stream>(a1, (Reg*)C0); C0 += INC;
 
 			while (loadFrom1 != endX1 && loadFrom1 != endY1) {
 				Item comp1 = *loadFrom1;
@@ -2804,22 +2130,14 @@ namespace origami_merger {
 			origami_utils::store<Reg, stream>(a2, (Reg*)C1); C1 += INC;
 			Item* endOpposite1 = (loadFrom1 == endX1) ? endY1 : endX1;
 
-			/*last = origami_utils::get_last_item<Reg, Item>(a3);
-			if (last < *opposite1 && (endOpposite1 - opposite1) >= MEMCPY_THRESH) {
-				origami_utils::store<Reg, stream>(a3, (Reg*)C1);
-				C1 += INC;
-				memcpy(C1, opposite1, sizeof(Item) * (endOpposite1 - opposite1));
+			while (opposite1 != endOpposite1) {
+				_mm_prefetch((char*)(opposite1 + 64), _MM_HINT_T2);
+				origami_utils::load<Reg>(a2, (Reg*)opposite1);
+				opposite1 += INC;
+				origami_utils::rswap<Reg, Item>(a2, a3);
+				origami_utils::store<Reg, stream>(a2, (Reg*)C1); C1 += INC;
 			}
-			else {*/
-				while (opposite1 != endOpposite1) {
-					_mm_prefetch((char*)(opposite1 + 64), _MM_HINT_T2);
-					origami_utils::load<Reg>(a2, (Reg*)opposite1);
-					opposite1 += INC;
-					origami_utils::rswap<Reg, Item>(a2, a3);
-					origami_utils::store<Reg, stream>(a2, (Reg*)C1); C1 += INC;
-				}
-				origami_utils::store<Reg, stream>(a3, (Reg*)C1); C1 += INC;
-			//}
+			origami_utils::store<Reg, stream>(a3, (Reg*)C1); C1 += INC;
 		}
 	}
 
@@ -6233,623 +5551,5 @@ namespace origami_merger {
 		}
 		return src;
 	}
-
-
-	
-
-	// -------------- ORIGAMI stuff ends
-	// -------------- other bench begins
-
-	template <typename Item, ui nreg>
-	FORCEINLINE void merge_branched_naive_scalar(Item* A, ui64 lenA, Item* B, ui64 lenB, Item* C) {
-		Item* a = A, * b = B, * endA = (A + lenA), * endB = (B + lenB), * c = C;
-		register Item a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15;
-
-		if constexpr (nreg == 1) {
-			a0 = a[0]; a1 = b[0];
-		}
-		else if constexpr (nreg == 2) {
-			a0 = a[0]; a1 = a[1]; a2 = b[0]; a3 = b[1];
-		}
-		else if constexpr (nreg == 3) {
-			a0 = a[0]; a1 = a[1]; a2 = a[2]; a3 = b[0]; a4 = b[1]; a5 = b[2];
-		}
-		else if constexpr (nreg == 4) {
-			a0 = a[0]; a1 = a[1]; a2 = a[2]; a3 = a[3];
-			a4 = b[0]; a5 = b[1]; a6 = b[2]; a7 = b[3];
-		}
-		else if constexpr (nreg == 5) {
-			a0 = a[0]; a1 = a[1]; a2 = a[2]; a3 = a[3]; a4 = a[4];
-			a5 = b[0]; a6 = b[1]; a7 = b[2]; a8 = b[3]; a9 = b[4];
-		}
-		else if constexpr (nreg == 8) {
-			a0 = a[0]; a1 = a[1]; a2 = a[2]; a3 = a[3]; a4 = a[4]; a5 = a[5]; a6 = a[6]; a7 = a[7];
-			a8 = b[0]; a9 = b[1]; a10 = b[2]; a11 = b[3]; a12 = b[4]; a13 = b[5]; a14 = b[6]; a15 = b[7];
-		}
-
-		a += nreg;
-		b += nreg;
-
-		while (a != endA && b != endB) {
-			if constexpr (nreg == 1) {
-				SWAP2(0, 1);
-				c[0] = a0;
-				if (a[0] < b[0])
-					a0 = *a++;
-				else a0 = *b++;
-					
-			}
-			else if constexpr (nreg == 2) {
-				SWAP2(0, 2); SWAP2(1, 3); SWAP2(1, 2);
-				c[0] = a0; c[1] = a1;
-				if (a[0] < b[0]) {
-					a0 = a[0]; a1 = a[1];
-					a += nreg;
-				}
-				else {
-					a0 = b[0]; a1 = b[1];
-					b += nreg;
-				}
-			}
-			else if constexpr (nreg == 3) {
-				SWAP2(0, 3); SWAP2(1, 4); SWAP2(2, 5); SWAP2(1, 3); SWAP2(2, 4); SWAP2(2, 3);
-				c[0] = a0; c[1] = a1; c[2] = a2;
-				if (a[0] < b[0]) {
-					a0 = a[0]; a1 = a[1]; a2 = a[2];
-					a += nreg;
-				}
-				else {
-					a0 = b[0]; a1 = b[1]; a2 = b[2];
-					b += nreg;
-				}
-			}
-			else if constexpr (nreg == 4) {
-				SWAP2(0, 4);	SWAP2(1, 5);	SWAP2(2, 6);	SWAP2(3, 7);
-				SWAP2(2, 4);	SWAP2(3, 5);
-				SWAP2(1, 2);	SWAP2(3, 4);
-
-				c[0] = a0; c[1] = a1; c[2] = a2; c[3] = a3;
-				
-				if (a[0] < b[0]) {
-					a0 = a[0]; a1 = a[1]; a2 = a[2]; a3 = a[3];
-					a += nreg;
-				}
-				else {
-					a0 = b[0]; a1 = b[1]; a2 = b[2]; a3 = b[3];
-					b += nreg;
-				}
-			}
-			else if constexpr (nreg == 5) {
-				// ripco best
-				/*SWAP2(0, 5); SWAP2(1, 6); SWAP2(2, 7); SWAP2(3, 8); SWAP2(4, 9);
-				SWAP2(3, 6);
-				SWAP2(4, 6);
-				SWAP2(3, 5);
-				SWAP2(2, 5); SWAP2(6, 8); SWAP2(1, 3); SWAP2(4, 7);
-				SWAP2(2, 3); SWAP2(4, 5); SWAP2(6, 7);*/
-				// Batcher's
-				SWAP2(0, 8); SWAP2(1, 9); SWAP2(2, 6); SWAP2(3, 7);
-				SWAP2(1, 5); SWAP2(4, 8); SWAP2(0, 2);
-				SWAP2(4, 6); SWAP2(3, 5); SWAP2(7, 9);
-				SWAP2(0, 1); SWAP2(2, 3); SWAP2(4, 5); SWAP2(6, 7); SWAP2(8, 9);
-
-				c[0] = a0; c[1] = a1; c[2] = a2; c[3] = a3; c[4] = a4;
-
-				if (a[0] < b[0]) {
-					a0 = a[0]; a1 = a[1]; a2 = a[2]; a3 = a[3]; a4 = a[4];
-					a += nreg;
-				}
-				else {
-					a0 = b[0]; a1 = b[1]; a2 = b[2]; a3 = b[3]; a4 = b[4];
-					b += nreg;
-				}
-			}
-			else if constexpr (nreg == 8) {
-				SWAP2(0, 8); SWAP2(1, 9); SWAP2(2, 10); SWAP2(3, 11); SWAP2(4, 12); SWAP2(5, 13); SWAP2(6, 14); SWAP2(7, 15);
-				SWAP2(4, 8); SWAP2(5, 9); SWAP2(6, 10); SWAP2(7, 11);
-				SWAP2(2, 4); SWAP2(3, 5); SWAP2(6, 8); SWAP2(7, 9); //SWAP2(10, 12); SWAP2(11, 13);
-				SWAP2(1, 2); SWAP2(3, 4); SWAP2(5, 6); SWAP2(7, 8);	//SWAP2(9, 10); SWAP2(11, 12); SWAP2(13, 14);
-
-				c[0] = a0; c[1] = a1; c[2] = a2; c[3] = a3; c[4] = a4; c[5] = a5; c[6] = a6; c[7] = a7;
-
-				if (a[0] < b[0]) {
-					a0 = a[0]; a1 = a[1]; a2 = a[2]; a3 = a[3]; a4 = a[4]; a5 = a[5]; a6 = a[6]; a7 = a[7];
-					a += nreg;
-				}
-				else {
-					a0 = b[0]; a1 = b[1]; a2 = b[2]; a3 = b[3]; a4 = a[4]; a5 = b[5]; a6 = b[6]; a7 = b[7];
-					b += nreg;
-				}
-			}
-			c += nreg;
-		}
-		//return;
-
-		// tail handle
-	}
-
-	template <typename Item, ui nreg>
-	FORCEINLINE void merge_branched_naive_scalar_kv(Item* A, ui64 lenA, Item* B, ui64 lenB, Item* C) {
-		// works only for i64
-		i64* a = (i64*)A, * b = (i64*)B, * endA = (i64*)(A + lenA), * endB = (i64*)(B + lenB), * c = (i64*)C;
-		register i64 a0, a1, a2, a3, a4, a5, a6, a7;
-		register i64 b0, b1, b2, b3, b4, b5, b6, b7;
-		constexpr ui64 INC = (nreg << 1);
-
-		if constexpr (nreg == 1) {
-			a0 = a[0]; b0 = a[1];
-			a1 = b[0]; b1 = b[1];
-		}
-		else if constexpr (nreg == 2) {
-			a0 = a[0]; b0 = a[1]; a1 = a[2]; b1 = a[3];
-			a2 = b[0]; b2 = b[1]; a3 = b[2]; b3 = b[3];
-		}
-		else if constexpr (nreg == 3) {
-			a0 = a[0]; b0 = a[1]; a1 = a[2]; b1 = a[3]; a2 = a[4]; b2 = a[5];
-			a3 = b[0]; b3 = b[1]; a4 = b[2]; b4 = b[3]; a5 = b[4]; b5 = b[5];
-		}
-		else if constexpr (nreg == 4) {
-			a0 = a[0]; b0 = a[1]; a1 = a[2]; b1 = a[3]; a2 = a[4]; b2 = a[5]; a3 = a[6]; b3 = a[7];
-			a4 = b[0]; b4 = b[1]; a5 = b[2]; b5 = b[3]; a6 = b[4]; b6 = b[5]; a7 = b[6]; b7 = b[7];
-		}
-
-		a += INC;
-		b += INC;
-
-		while (a != endA && b != endB) {
-			if constexpr (nreg == 1) {
-				SWAPKV2(0, 1);
-				c[0] = a0; c[1] = b0;
-				if (a[0] < b[0]) {
-					a0 = a[0];
-					b0 = a[1];
-					a += INC;
-				}
-				else {
-					a0 = b[0];
-					b0 = b[1];
-					b += INC;
-				}
-			}
-			else if constexpr (nreg == 2) {
-				SWAPKV2(0, 2); SWAPKV2(1, 3); SWAPKV2(1, 2);
-				c[0] = a0; c[1] = b0; c[2] = a1; c[3] = b1; 
-				
-				if (a[0] < b[0]) {
-					a0 = a[0]; b0 = a[1]; a1 = a[2]; b1 = a[3];
-					a += INC;
-				}
-				else {
-					a0 = b[0]; b0 = b[1]; a1 = b[2]; b1 = b[3];
-					b += INC;
-				}
-			}
-			else if constexpr (nreg == 3) {
-				SWAPKV2(0, 3); SWAPKV2(1, 4); SWAPKV2(2, 5); SWAPKV2(1, 3); SWAPKV2(2, 4); SWAPKV2(2, 3);
-				c[0] = a0; c[1] = b0; c[2] = a1; c[3] = b1; c[4] = a2; c[5] = b2;
-
-				if (a[0] < b[0]) {
-					a0 = a[0]; b0 = a[1]; a1 = a[2]; b1 = a[3]; a2 = a[4]; b2 = a[5];
-					a += INC;
-				}
-				else {
-					a0 = b[0]; b0 = b[1]; a1 = b[2]; b1 = b[3]; a2 = b[4]; b2 = b[5];
-					b += INC;
-				}
-			}
-			else if constexpr (nreg == 4) {
-				SWAPKV2(0, 4);	SWAPKV2(1, 5);	SWAPKV2(2, 6);	SWAPKV2(3, 7);
-				SWAPKV2(2, 4);	SWAPKV2(3, 5);
-				SWAPKV2(1, 2);	SWAPKV2(3, 4);
-
-				c[0] = a0; c[1] = b0; c[2] = a1; c[3] = b1; c[4] = a2; c[5] = b2; c[6] = a3; c[7] = b3;
-
-				if (a[0] < b[0]) {
-					a0 = a[0]; b0 = a[1]; a1 = a[2]; b1 = a[3]; a2 = a[4]; b2 = a[5]; a3 = a[6]; b3 = a[7];
-					a += INC;
-				}
-				else {
-					a0 = b[0]; b0 = b[1]; a1 = b[2]; b1 = b[3]; a2 = b[4]; b2 = b[5]; a3 = b[6]; b3 = b[7];
-					b += INC;
-				}
-			}
-			c += INC;
-		}
-		//return;
-
-		// tail handle
-	}
-
-	template <typename Item, ui nreg>
-	FORCEINLINE void mergebl_naive_scalar(Item* A, ui64 lenA, Item* B, ui64 lenB, Item* C) {
-#define _VERSION 2
-		Item* a = A, * b = B, * endA = (A + lenA), * endB = (B + lenB), * c = C;
-		register Item a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15;
-
-		constexpr ui64 INC = nreg;
-
-		if constexpr (nreg == 1) {
-			a0 = a[0]; a1 = b[0];
-		}
-		else if constexpr (nreg == 2) {
-			a0 = a[0]; a1 = a[1]; a2 = b[0]; a3 = b[1];
-		}
-		else if constexpr (nreg == 3) {
-			a0 = a[0]; a1 = a[1]; a2 = a[2]; a3 = b[0]; a4 = b[1]; a5 = b[2];
-		}
-		else if constexpr (nreg == 4) {
-			a0 = a[0]; a1 = a[1]; a2 = a[2]; a3 = a[3];
-			a4 = b[0]; a5 = b[1]; a6 = b[2]; a7 = b[3];
-		}
-		else if constexpr (nreg == 5) {
-			a0 = a[0]; a1 = a[1]; a2 = a[2]; a3 = a[3]; a4 = a[4];
-			a5 = b[0]; a6 = b[1]; a7 = b[2]; a8 = b[3]; a9 = b[4];
-		}
-		else if constexpr (nreg == 8) {
-			a0 = a[0]; a1 = a[1]; a2 = a[2]; a3 = a[3]; a4 = a[4]; a5 = a[5]; a6 = a[6]; a7 = a[7];
-			a8 = b[0]; a9 = b[1]; a10 = b[2]; a11 = b[3]; a12 = b[4]; a13 = b[5]; a14 = b[6]; a15 = b[7];
-		}
-
-		a += INC;
-		b += INC;
-
-		while (a != endA && b != endB) {
-			//printf("%llX, %llX %llX, %llX\n", a, b, endA, endB);
-			bool flag = a[0] < b[0];
-
-#if _VERSION != 1
-			Item* src = flag ? a : b;
-			Item* nxt = src + INC;
-			a = flag ? nxt : a;
-			b = flag ? b : nxt;
-#endif 
-			
-			if constexpr (nreg == 1) {
-				SWAP2(0, 1);
-				c[0] = a0;
-#if _VERSION == 1
-				a0 = flag ? a[0] : b[0];
-#else 
-				_mm_prefetch((char*)(src + 64), _MM_HINT_T2);
-				a0 = src[0];
-#endif
-			}
-			else if constexpr (nreg == 2) {
-				SWAP2(0, 2); SWAP2(1, 3); SWAP2(1, 2);
-				c[0] = a0; c[1] = a1;
-
-#if _VERSION == 1
-				a0 = flag ? a[0] : b[0];
-				a1 = flag ? a[1] : b[1];
-#else 
-				_mm_prefetch((char*)(src + 64), _MM_HINT_T2);
-				a0 = src[0];
-				a1 = src[1];				
-#endif 
-			}
-			else if constexpr (nreg == 3) {
-				SWAP2(0, 3); SWAP2(1, 4); SWAP2(2, 5); SWAP2(1, 3); SWAP2(2, 4); SWAP2(2, 3);
-				c[0] = a0; c[1] = a1; c[2] = a2; 
-#if _VERSION == 1
-				a0 = flag ? a[0] : b[0];
-				a1 = flag ? a[1] : b[1];
-				a2 = flag ? a[2] : b[2];
-#else 
-				_mm_prefetch((char*)(src + 64), _MM_HINT_T2);
-				a0 = src[0]; a1 = src[1];
-				a2 = src[2]; 
-#endif 
-			}
-			else if constexpr (nreg == 4) {
-				SWAP2(0, 4);	SWAP2(1, 5);	SWAP2(2, 6);	SWAP2(3, 7);
-				SWAP2(2, 4);	SWAP2(3, 5);
-				SWAP2(1, 2);	SWAP2(3, 4);
-
-				c[0] = a0; c[1] = a1; c[2] = a2; c[3] = a3;
-#if _VERSION == 1
-				a0 = flag ? a[0] : b[0];
-				a1 = flag ? a[1] : b[1];
-				a2 = flag ? a[2] : b[2];
-				a3 = flag ? a[3] : b[3];
-#else 
-				_mm_prefetch((char*)(src + 64), _MM_HINT_T2);
-				a0 = src[0]; a1 = src[1];
-				a2 = src[2]; a3 = src[3];
-#endif
-
-			}
-			else if constexpr (nreg == 5) {
-				// ripco best
-				/*SWAP2(0, 5); SWAP2(1, 6); SWAP2(2, 7); SWAP2(3, 8); SWAP2(4, 9);
-				SWAP2(3, 6);
-				SWAP2(4, 6);
-				SWAP2(3, 5);
-				SWAP2(2, 5); SWAP2(6, 8); SWAP2(1, 3); SWAP2(4, 7);
-				SWAP2(2, 3); SWAP2(4, 5); SWAP2(6, 7);*/
-				// Batcher's
-				SWAP2(0, 8); SWAP2(1, 9); SWAP2(2, 6); SWAP2(3, 7);
-				SWAP2(1, 5); SWAP2(4, 8); SWAP2(0, 2);
-				SWAP2(4, 6); SWAP2(3, 5); SWAP2(7, 9);
-				SWAP2(0, 1); SWAP2(2, 3); SWAP2(4, 5); SWAP2(6, 7); SWAP2(8, 9);
-				
-				c[0] = a0; c[1] = a1; c[2] = a2; c[3] = a3; c[4] = a4;
-
-				/*a0 = flag ? a[0] : b[0];
-				a1 = flag ? a[1] : b[1];
-				a2 = flag ? a[2] : b[2];
-				a3 = flag ? a[3] : b[3];
-				a4 = flag ? a[4] : b[4];*/
-				_mm_prefetch((char*)(src + 64), _MM_HINT_T2);
-				a0 = src[0]; a1 = src[1];
-				a2 = src[2]; a3 = src[3];
-				a4 = src[4];
-			}
-			else if constexpr (nreg == 8) {
-				SWAP2(0, 8); SWAP2(1, 9); SWAP2(2, 10); SWAP2(3, 11); SWAP2(4, 12); SWAP2(5, 13); SWAP2(6, 14); SWAP2(7, 15);
-				SWAP2(4, 8); SWAP2(5, 9); SWAP2(6, 10); SWAP2(7, 11);
-				SWAP2(2, 4); SWAP2(3, 5); SWAP2(6, 8); SWAP2(7, 9); //SWAP2(10, 12); SWAP2(11, 13);
-				SWAP2(1, 2); SWAP2(3, 4); SWAP2(5, 6); SWAP2(7, 8);	//SWAP2(9, 10); SWAP2(11, 12); SWAP2(13, 14);
-				_mm_prefetch((char*)(src + 64), _MM_HINT_T2);
-				c[0] = a0; c[1] = a1; c[2] = a2; c[3] = a3; c[4] = a4; c[5] = a5; c[6] = a6; c[7] = a7;
-
-				/*a0 = flag ? a[0] : b[0];
-				a1 = flag ? a[1] : b[1];
-				a2 = flag ? a[2] : b[2];
-				a3 = flag ? a[3] : b[3];
-				a4 = flag ? a[4] : b[4];
-				a5 = flag ? a[5] : b[5];
-				a6 = flag ? a[6] : b[6];
-				a7 = flag ? a[7] : b[7];*/
-				
-				a0 = src[0]; a1 = src[1];
-				a2 = src[2]; a3 = src[3]; 
-				a4 = src[4]; a1 = src[5];
-				a6 = src[6]; a3 = src[7];
-			}
-			
-			c += INC;
-
-#if _VERSION == 1
-			a += flag ? INC : 0;
-			b += flag ? 0 : INC;
-#endif
-		}
-		//return;
-
-		// tail handle
-
-#undef _VERSION
-	}
-	
-	template <typename Reg, bool stream, ui nreg, typename Item>
-	FORCEINLINE void merge_branched_naive_vectorized(Item* A, ui64 lenA, Item* B, ui64 lenB, Item* C) {
-
-		Reg* a = (Reg*)A, * b = (Reg*)B, * endA = (Reg*)(A + lenA), * endB = (Reg*)(B + lenB), * c = (Reg*)C;
-		register Reg a0, a1, a2, a3, a4, a5, a6, a7, a8, a9;
-
-		origami_utils::init_reg<Reg>(a0); origami_utils::init_reg<Reg>(a1); origami_utils::init_reg<Reg>(a2); origami_utils::init_reg<Reg>(a3);
-		origami_utils::init_reg<Reg>(a4); origami_utils::init_reg<Reg>(a5); origami_utils::init_reg<Reg>(a6); origami_utils::init_reg<Reg>(a7);
-		origami_utils::init_reg<Reg>(a8); origami_utils::init_reg<Reg>(a9);
-
-		if constexpr (nreg == 1) {
-			origami_utils::load<Reg>(a0, a);
-			origami_utils::load<Reg>(a1, b);
-		}
-		else if constexpr (nreg == 2) {
-			origami_utils::load<Reg>(a0, a); origami_utils::load<Reg>(a1, a + 1);
-			origami_utils::load<Reg>(a2, b); origami_utils::load<Reg>(a3, b + 1);
-		}
-		else if constexpr (nreg == 3) {
-			origami_utils::load<Reg>(a0, a); origami_utils::load<Reg>(a1, a + 1); origami_utils::load<Reg>(a2, a + 2);
-			origami_utils::load<Reg>(a3, b); origami_utils::load<Reg>(a4, b + 1); origami_utils::load<Reg>(a5, b + 2);
-		}
-		else if constexpr (nreg == 4) {
-			origami_utils::load<Reg>(a0, a); origami_utils::load<Reg>(a1, a + 1); origami_utils::load<Reg>(a2, a + 2); origami_utils::load<Reg>(a3, a + 3);
-			origami_utils::load<Reg>(a4, b); origami_utils::load<Reg>(a5, b + 1); origami_utils::load<Reg>(a6, b + 2); origami_utils::load<Reg>(a7, b + 3);
-		}
-		
-		a += nreg;
-		b += nreg;
-
-		while (a != endA && b != endB) {
-			if constexpr (nreg == 1) {
-				// irl_merge_network::merge_network2<Reg, Item>(a0, a1);
-				origami_utils::rswap<Reg, Item>(a0, a1);
-				origami_utils::store<Reg, stream>(a0, c);
-
-				if (*(Item*)a < *(Item*)b) {
-					origami_utils::load<Reg>(a0, a);
-					a += nreg;
-				}
-				else {
-					origami_utils::load<Reg>(a0, b);
-					b += nreg;
-				}
-
-				
-			}
-			else if constexpr (nreg == 2) {
-				//irl_merge_network::merge_network4<Reg, Item>(a0, a1, a2, a3);
-				origami_utils::rswap<Reg, Item>(a0, a2); origami_utils::rswap<Reg, Item>(a1, a3);
-				origami_utils::rswap<Reg, Item>(a1, a2);
-				origami_utils::store<Reg, stream>(a0, c); origami_utils::store<Reg, stream>(a1, c + 1);
-
-				if (*(Item*)a < *(Item*)b) {
-					origami_utils::load<Reg>(a0, a);
-					origami_utils::load<Reg>(a1, a + 1);
-					a += nreg;
-				}
-				else {
-					origami_utils::load<Reg>(a0, b);
-					origami_utils::load<Reg>(a1, b + 1);
-					b += nreg;
-				}
-			}
-			else if constexpr (nreg == 3) {
-				origami_utils::rswap<Reg, Item>(a0, a3); origami_utils::rswap<Reg, Item>(a1, a4); origami_utils::rswap<Reg, Item>(a2, a5);
-				origami_utils::rswap<Reg, Item>(a1, a3); origami_utils::rswap<Reg, Item>(a2, a4); origami_utils::rswap<Reg, Item>(a2, a3);
-				
-				origami_utils::store<Reg, stream>(a0, c); origami_utils::store<Reg, stream>(a1, c + 1);
-				origami_utils::store<Reg, stream>(a2, c + 2); 
-
-				if (*(Item*)a < *(Item*)b) {
-					origami_utils::load<Reg>(a0, a);
-					origami_utils::load<Reg>(a1, a + 1);
-					origami_utils::load<Reg>(a2, a + 2);
-					a += nreg;
-				}
-				else {
-					origami_utils::load<Reg>(a0, b);
-					origami_utils::load<Reg>(a1, b + 1);
-					origami_utils::load<Reg>(a2, b + 2);
-					b += nreg;
-				}
-			}
-			else if constexpr (nreg == 4) {
-				//irl_merge_network::merge_network8<Reg, Item>(a0, a1, a2, a3, a4, a5, a6, a7);
-				origami_utils::rswap<Reg, Item>(a0, a4);	origami_utils::rswap<Reg, Item>(a1, a5);	origami_utils::rswap<Reg, Item>(a2, a6);	origami_utils::rswap<Reg, Item>(a3, a7);
-				origami_utils::rswap<Reg, Item>(a2, a4);	origami_utils::rswap<Reg, Item>(a3, a5);
-				origami_utils::rswap<Reg, Item>(a1, a2);	origami_utils::rswap<Reg, Item>(a3, a4);
-				origami_utils::store<Reg, stream>(a0, c); origami_utils::store<Reg, stream>(a1, c + 1);
-				origami_utils::store<Reg, stream>(a2, c + 2); origami_utils::store<Reg, stream>(a3, c + 3);
-
-				if (*(Item*)a < *(Item*)b) {
-					origami_utils::load<Reg>(a0, a);
-					origami_utils::load<Reg>(a1, a + 1);
-					origami_utils::load<Reg>(a2, a + 2);
-					origami_utils::load<Reg>(a3, a + 3);
-					a += nreg;
-				}
-				else {
-					origami_utils::load<Reg>(a0, b);
-					origami_utils::load<Reg>(a1, b + 1);
-					origami_utils::load<Reg>(a2, b + 2);
-					origami_utils::load<Reg>(a3, b + 3);
-					b += nreg;
-				}
-			}
-			c += nreg;
-		}
-
-		// tail handle
-		
-	}
-
-	template <typename Reg, bool stream, ui nreg, typename Item>
-	FORCEINLINE void mergebl_naive_vectorized(Item* A, ui64 lenA, Item* B, ui64 lenB, Item* C) {
-
-		Reg* a = (Reg*)A, * b = (Reg*)B, * endA = (Reg*)(A + lenA), * endB = (Reg*)(B + lenB), * c = (Reg*)C;
-		register Reg a0, a1, a2, a3, a4, a5, a6, a7, a8, a9;
-
-		origami_utils::init_reg<Reg>(a0); origami_utils::init_reg<Reg>(a1); origami_utils::init_reg<Reg>(a2); origami_utils::init_reg<Reg>(a3);
-		origami_utils::init_reg<Reg>(a4); origami_utils::init_reg<Reg>(a5); origami_utils::init_reg<Reg>(a6); origami_utils::init_reg<Reg>(a7);
-		origami_utils::init_reg<Reg>(a8); origami_utils::init_reg<Reg>(a9);
-
-		if constexpr (nreg == 1) {
-			origami_utils::load<Reg>(a0, a);
-			origami_utils::load<Reg>(a1, b);
-		}
-		else if constexpr (nreg == 2) {
-			origami_utils::load<Reg>(a0, a); origami_utils::load<Reg>(a1, a + 1);
-			origami_utils::load<Reg>(a2, b); origami_utils::load<Reg>(a3, b + 1);
-		}
-		else if constexpr (nreg == 4) {
-			origami_utils::load<Reg>(a0, a); origami_utils::load<Reg>(a1, a + 1); origami_utils::load<Reg>(a2, a + 2); origami_utils::load<Reg>(a3, a + 3);
-			origami_utils::load<Reg>(a4, b); origami_utils::load<Reg>(a5, b + 1); origami_utils::load<Reg>(a6, b + 2); origami_utils::load<Reg>(a7, b + 3);
-		}
-		else if constexpr (nreg == 5) {
-			origami_utils::load<Reg>(a0, a); origami_utils::load<Reg>(a1, a + 1); origami_utils::load<Reg>(a2, a + 2); origami_utils::load<Reg>(a3, a + 3); origami_utils::load<Reg>(a4, a + 4);
-			origami_utils::load<Reg>(a5, b); origami_utils::load<Reg>(a6, b + 1); origami_utils::load<Reg>(a7, b + 2); origami_utils::load<Reg>(a8, b + 3); origami_utils::load<Reg>(a9, b + 4);
-		}
-
-		a += nreg;
-		b += nreg;
-
-		while (a != endA && b != endB) {
-			bool flag = *(Item*)a < *(Item*)b;
-			Reg* src = flag ? a : b;
-
-			if constexpr (nreg == 1) {
-				// irl_merge_network::merge_network2<Reg, Item>(a0, a1);
-				origami_utils::rswap<Reg, Item>(a0, a1);
-				origami_utils::store<Reg, stream>(a0, c);
-
-				//flag ? origami_utils::load<Reg>(a0, a) : origami_utils::load<Reg>(a0, b);
-				_mm_prefetch((char*)src + 64, _MM_HINT_T2);
-				origami_utils::load<Reg>(a0, src);
-			}
-			else if constexpr (nreg == 2) {
-				//irl_merge_network::merge_network4<Reg, Item>(a0, a1, a2, a3);
-				origami_utils::rswap<Reg, Item>(a0, a2); origami_utils::rswap<Reg, Item>(a1, a3);
-				origami_utils::rswap<Reg, Item>(a1, a2);
-				
-				origami_utils::store<Reg, stream>(a0, c); origami_utils::store<Reg, stream>(a1, c + 1);
-
-				/*flag ? origami_utils::load<Reg>(a0, a) : origami_utils::load<Reg>(a0, b);
-				flag ? origami_utils::load<Reg>(a1, a + 1) : origami_utils::load<Reg>(a1, b + 1);*/
-				_mm_prefetch((char*)src + 64, _MM_HINT_T2);
-				origami_utils::load<Reg>(a0, src);
-				origami_utils::load<Reg>(a1, src + 1);
-			}
-			else if constexpr (nreg == 4) {
-				//irl_merge_network::merge_network8<Reg, Item>(a0, a1, a2, a3, a4, a5, a6, a7);
-				origami_utils::rswap<Reg, Item>(a0, a4);	origami_utils::rswap<Reg, Item>(a1, a5);	origami_utils::rswap<Reg, Item>(a2, a6);	origami_utils::rswap<Reg, Item>(a3, a7);
-				origami_utils::rswap<Reg, Item>(a2, a4);	origami_utils::rswap<Reg, Item>(a3, a5);
-				origami_utils::rswap<Reg, Item>(a1, a2);	origami_utils::rswap<Reg, Item>(a3, a4);
-
-				origami_utils::store<Reg, stream>(a0, c); origami_utils::store<Reg, stream>(a1, c + 1);
-				origami_utils::store<Reg, stream>(a2, c + 2); origami_utils::store<Reg, stream>(a3, c + 3);
-
-
-				/*flag ? origami_utils::load<Reg>(a0, a) : origami_utils::load<Reg>(a0, b);
-				flag ? origami_utils::load<Reg>(a1, a + 1) : origami_utils::load<Reg>(a1, b + 1);
-				flag ? origami_utils::load<Reg>(a2, a + 2) : origami_utils::load<Reg>(a2, b + 2);
-				flag ? origami_utils::load<Reg>(a3, a + 3) : origami_utils::load<Reg>(a3, b + 3);*/
-				_mm_prefetch((char*)src + 64, _MM_HINT_T2);
-				origami_utils::load<Reg>(a0, src);
-				origami_utils::load<Reg>(a1, src + 1);
-				origami_utils::load<Reg>(a2, src + 2);
-				origami_utils::load<Reg>(a3, src + 3);
-			}
-			else if constexpr (nreg == 5) {
-				// irl_merge_network::merge_network10<Reg, Item>(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9);
-				origami_utils::rswap<Reg, Item>(a0, a8); origami_utils::rswap<Reg, Item>(a1, a9); origami_utils::rswap<Reg, Item>(a2, a6); origami_utils::rswap<Reg, Item>(a3, a7);
-				origami_utils::rswap<Reg, Item>(a1, a5); origami_utils::rswap<Reg, Item>(a4, a8); origami_utils::rswap<Reg, Item>(a0, a2);
-				origami_utils::rswap<Reg, Item>(a4, a6); origami_utils::rswap<Reg, Item>(a3, a5); origami_utils::rswap<Reg, Item>(a7, a9);
-				origami_utils::rswap<Reg, Item>(a0, a1); origami_utils::rswap<Reg, Item>(a2, a3); origami_utils::rswap<Reg, Item>(a4, a5); origami_utils::rswap<Reg, Item>(a6, a7);
-				origami_utils::rswap<Reg, Item>(a8, a9);
-
-				origami_utils::store<Reg, stream>(a0, c); origami_utils::store<Reg, stream>(a1, c + 1);
-				origami_utils::store<Reg, stream>(a2, c + 2); origami_utils::store<Reg, stream>(a3, c + 3); origami_utils::store<Reg, stream>(a4, c + 4);
-
-				/*flag ? origami_utils::load<Reg>(a0, a) : origami_utils::load<Reg>(a0, b);
-				flag ? origami_utils::load<Reg>(a1, a + 1) : origami_utils::load<Reg>(a1, b + 1);
-				flag ? origami_utils::load<Reg>(a2, a + 2) : origami_utils::load<Reg>(a2, b + 2);
-				flag ? origami_utils::load<Reg>(a3, a + 3) : origami_utils::load<Reg>(a3, b + 3);
-				flag ? origami_utils::load<Reg>(a3, a + 4) : origami_utils::load<Reg>(a3, b + 4);*/
-				_mm_prefetch((char*)src + 64, _MM_HINT_T2);
-				origami_utils::load<Reg>(a0, src);
-				origami_utils::load<Reg>(a1, src + 1);
-				origami_utils::load<Reg>(a2, src + 2);
-				origami_utils::load<Reg>(a3, src + 3);
-				origami_utils::load<Reg>(a4, src + 4);
-			}
-
-			c += nreg;
-			a += flag ? nreg : 0;
-			b += flag ? 0 : nreg;
-		}
-
-		// tail handle
-
-	}
-
-
-
-	
-
-
-	// template instantiation
-	
 	
 }

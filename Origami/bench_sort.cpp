@@ -10,10 +10,13 @@ void sort_bench(ui writer_type, int argc, char** argv) {
 //#define STD_CORRECTNESS
 	ui size_pow = atoi(argv[1]);
 	ui n_threads = atoi(argv[2]);
-	ui n_cores, min_k;
+	ui n_cores, min_k = 2;
 	if (n_threads > 1) {
 		n_cores = atoi(argv[3]);
 		min_k = atoi(argv[4]);
+	}
+	else {
+		min_k = atoi(argv[3]);
 	}
 
 	print_size<Reg, Item>();
@@ -30,7 +33,7 @@ void sort_bench(ui writer_type, int argc, char** argv) {
 	Item* data_back = nullptr;
 	Item* kway_buf = nullptr;
 	ui64 kway_buf_size = MB(256);
-	if (n_threads > 1) {
+	if (min_k > 2) {
 		kway_buf = (Item*)VALLOC(kway_buf_size);
 		memset(kway_buf, 0, kway_buf_size);
 	}
@@ -72,7 +75,7 @@ void sort_bench(ui writer_type, int argc, char** argv) {
 		hrc::time_point st1 = hrc::now();
 		switch (n_threads) {
 		case 1:
-			o = origami_sorter::sort_single_thread<Item, Reg>(data2, output2, end2, n_items);
+			o = origami_sorter::sort_single_thread<Item, Reg>(data2, output2, end2, n_items, min_k, kway_buf);
 			break;
 		default:
 			o = origami_sorter::sort_multi_thread<Item, Reg>(data2, output2, n_items, n_threads, n_cores, min_k, kway_buf);
@@ -113,7 +116,7 @@ void sort_bench(ui writer_type, int argc, char** argv) {
 	VFREE(output);
 
 	if (repeat > 1) VFREE(data_back);
-	if (n_threads > 1) VFREE(kway_buf);
+	if (min_k > 2) VFREE(kway_buf);
 
 #ifdef STD_CORRECTNESS
 	VirtualFree(sorted, 0, MEM_RELEASE);

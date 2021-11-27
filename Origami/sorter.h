@@ -3830,7 +3830,7 @@ namespace origami_sorter {
 	}
 
 	template <typename Item, typename Reg, ui P1_NREG = _P1_NREG, ui P1_N = _P1_N, ui P1_SWITCH = _P1_SWITCH, ui P2_N = _P2_N, ui P2_MERGE_UNROLL = _P2_MERGE_UNROLL, ui P2_MERGE_NREG_1x = _P2_MERGE_NREG_1x, ui P2_MERGE_NREG_2x = _P2_MERGE_NREG_2x, ui P2_MERGE_NREG_3x = _P2_MERGE_NREG_3x, ui P3_MERGE_UNROLL = _P3_MERGE_UNROLL, ui P3_MERGE_NREG_1x = _P3_MERGE_NREG_1x, ui P3_MERGE_NREG_2x = _P3_MERGE_NREG_2x, ui P3_MERGE_NREG_3x = _P3_MERGE_NREG_3x>
-	FORCEINLINE Item* sort_single_thread(Item* d, Item* tmp_buf, Item* end, ui64 sort_n) {
+	FORCEINLINE Item* sort_single_thread(Item* d, Item* tmp_buf, Item* end, ui64 sort_n, ui min_k = 2, Item* interim_buf = nullptr) {
 		ui64 n_items = end - d;
 		Item* src = d;
 		Item* dst = tmp_buf;
@@ -3852,7 +3852,45 @@ namespace origami_sorter {
 		if (sort_n > Y) {
 			src = (o == d) ? d : tmp_buf;
 			dst = (o == d) ? tmp_buf : d;
-			return origami_merger::merge_series<Reg, Item, true, P3_MERGE_UNROLL, P3_MERGE_NREG_1x, P3_MERGE_NREG_2x, P3_MERGE_NREG_3x>(src, dst, n_items, Y, sort_n);
+			if (min_k == 2)
+				return origami_merger::merge_series<Reg, Item, true, P3_MERGE_UNROLL, P3_MERGE_NREG_1x, P3_MERGE_NREG_2x, P3_MERGE_NREG_3x>(src, dst, n_items, Y, sort_n);
+			else {
+				ui64 prev_sort_n = Y;
+				ui Y_pow = (ui)log2(Y);
+				ui sort_pow = (ui)log2(sort_n);
+				ui phase3_levels = sort_pow - Y_pow;
+
+				Item* X[2048], * endX[2048];
+				ui min_k_pow = log2(min_k);
+				int iter = 0;
+				while (phase3_levels > 0) {
+					ui current_way_pow = (phase3_levels - min_k_pow) < min_k_pow ? phase3_levels : min_k_pow;
+					ui current_way = 1 << current_way_pow;
+					ui64 merged_n = current_way * prev_sort_n;
+
+					origami_merge_tree::MergeTree<Reg, Item>* tree = nullptr;
+					if (current_way_pow & 1) tree = new origami_merge_tree::MergeTreeOdd<Reg, Item>();
+					else tree = new origami_merge_tree::MergeTreeEven<Reg, Item>();
+
+					tree->merge_init(current_way, interim_buf, _MT_L1_BUFF_N, _MT_L2_BUFF_N);
+
+					Item* p = src, * p_end = src + n_items, *pout = dst;
+					while (p < p_end) {
+						FOR(j, current_way, 1) {
+							X[j] = p;
+							endX[j] = p + prev_sort_n;
+							p += prev_sort_n;
+						}
+						tree->merge(X, endX, pout, merged_n, _MT_L1_BUFF_N, _MT_L2_BUFF_N, interim_buf, current_way);
+						pout += merged_n;
+					}
+					prev_sort_n = merged_n;
+					phase3_levels -= current_way_pow;
+					// swap
+					Item* tmp = src; src = dst; dst = tmp;
+				}
+				return src;
+			}
 		}
 		return o;
 	}
@@ -3861,7 +3899,6 @@ namespace origami_sorter {
 	// MULTI-THREAD
 #define PHASE_3
 #define PHASE_4
-//#define SCALAR
 #define PHASE3_ITERS_MAX 12
 
 	template <typename Item>
@@ -3946,11 +3983,10 @@ namespace origami_sorter {
 
 		// Phase 3
 #ifdef PHASE_3
-#ifndef SCALAR
 		//printf("Thread %3lu Phase 3 begin ... \n", t_idx);
 		const ui phase3_iters_loc = phase3_iters;
-		ui phase3_job_ids[1024];
-		Item* X[1024], * endX[1024];
+		ui phase3_job_ids[2048];
+		Item* X[2048], * endX[2048];
 		ui64 prev_sort_n = Y_loc;
 
 		ui p2_iters = (ui)(log2(P2_N) - log2(P1_N));
@@ -4024,82 +4060,11 @@ namespace origami_sorter {
 			// swap
 			Item* tmp = src; src = dst; dst = tmp;
 		}
-#else 
-		//printf("Thread %3lu Phase 3 begin ... \n", t_idx);
-		const ui phase3_iters_loc = phase3_iters;
-		ui phase3_job_ids[1024];
-		Item* X[1024], * endX[1024];
-		ui64 prev_sort_n = Y_loc;
 
-		ui p2_iters = (ui)(log2(P2_N) - log2(P1_N));
-		src = p2_iters ? d : out;
-		dst = p2_iters ? out : d;
-
-		FOR(i, phase3_iters_loc, 1) {
-			std::queue<ui>* phase3_this_Q = &phase3_Q[i];
-			std::queue<ui>* phase3_next_Q = &phase3_Q[i + 1];
-			const ui64 merged_n = prev_sort_n << 1;
-			const ui n_jobs = phase3_n_jobs[i];
-			__int64* phase3_curr_job_id_loc = &phase3_curr_job_id[i];
-
-
-			while (1) {
-				EnterCriticalSection(&cs);
-				if (phase3_this_Q->size() >= 2) {
-					ui j1 = phase3_this_Q->front(); phase3_this_Q->pop();
-					ui j2 = phase3_this_Q->front(); phase3_this_Q->pop();
-					LeaveCriticalSection(&cs);
-
-					Item* src1 = src + j1 * prev_sort_n;
-					Item* src2 = src + j2 * prev_sort_n;
-					
-					__int64 curr_job_id = InterlockedIncrement64(phase3_curr_job_id_loc);
-
-					Item* pout = dst + curr_job_id * merged_n;
-
-					if constexpr (std::is_same<Item, KeyValue<i64, i64>>::value) {
-						origami_merger::mergebl2_scalar_kv<Item, 4>(src1, prev_sort_n, src2, prev_sort_n, pout);
-					}
-					else {
-						/*EnterCriticalSection(&cs2);
-						printf("Th %d checking correctness on %llu items ... \n", t_idx, merged_n);
-						printf("Src1 ... ");  SortCorrectnessChecker<Item>(src1, prev_sort_n); printf("done\n");
-						printf("Src2 ... ");  SortCorrectnessChecker<Item>(src2, prev_sort_n); printf("done\n");*/
-						origami_merger::mergebl2_scalar<Item, 4>(src1, prev_sort_n, src2, prev_sort_n, pout);
-						/*printf("Merged ... ");  SortCorrectnessChecker<Item>(pout, merged_n); printf("done\n");
-						PRINT_DASH(20);
-						system("pause");
-						LeaveCriticalSection(&cs2);*/
-					}
-
-					if (i != phase3_iters_loc - 1) {
-						EnterCriticalSection(&cs);
-						phase3_next_Q->push(curr_job_id);
-						LeaveCriticalSection(&cs);
-					}
-				}
-				else {
-					// Q does not have enough jobs
-					LeaveCriticalSection(&cs);
-					// check to see all jobs are done in this level
-					__int64 curr_job_id = *phase3_curr_job_id_loc;
-					if (curr_job_id >= n_jobs - 1)
-						break;
-					// if not, sleep for a while
-					SwitchToThread();
-				}
-			}
-			prev_sort_n = merged_n;
-
-			// swap
-			Item* tmp = src; src = dst; dst = tmp;
-		}
-#endif
 #endif
 
 		// Phase 4
 #ifdef PHASE_4
-#ifndef SCALAR
 		// need synchronization at this point
 		EnterSynchronizationBarrier(&barrier, SYNCHRONIZATION_BARRIER_FLAGS_BLOCK_ONLY);
 		//printf("Thread %3lu beginning phase 4\n", t_idx);
@@ -4204,9 +4169,6 @@ namespace origami_sorter {
 
 		tree->merge_cleanup();
 		delete tree;
-#else 
-	// nothing to do	
-#endif	// SCALAR
 #endif	// PHASE 
 	}
 
@@ -4227,8 +4189,9 @@ namespace origami_sorter {
 		ui phase3_levels = (log2(n_items)) - log2(_M) - Y_pow;
 		ui i = 0;
 		ui prev_jobs_tot = phase1_2_jobs_tot;
+		ui min_k_pow = log2(min_k);
 		while (phase3_levels > 0) {
-			ui current_way_pow = (phase3_levels - min_k) < min_k ? phase3_levels : min_k;
+			ui current_way_pow = (phase3_levels - min_k_pow) < min_k_pow ? phase3_levels : min_k_pow;
 			phase3_ways_pow[i] = current_way_pow;	
 			phase3_n_jobs[i] = prev_jobs_tot / (1LU << phase3_ways_pow[i]);
 			prev_jobs_tot = phase3_n_jobs[i];

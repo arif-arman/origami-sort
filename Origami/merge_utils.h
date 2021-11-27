@@ -197,7 +197,7 @@ namespace origami_utils {
 		else if constexpr (std::is_same<Reg, avx2>::value || std::is_same<Reg, avx2f>::value || std::is_same<Reg, avx2d>::value) avx2_utils::print<Item, Reg>(a0);
 		else if constexpr (std::is_same<Reg, avx512>::value || std::is_same<Reg, avx512f>::value || std::is_same<Reg, avx512d>::value) avx512_utils::print<Item, Reg>(a0);
 		else {
-			printf("Scalar print, not implemented\n");
+			ReportError("Scalar print, not implemented");
 		}
 	}
 
@@ -251,7 +251,7 @@ namespace origami_utils {
 		else if constexpr (std::is_same<Reg, avx512>::value || std::is_same<Reg, avx512f>::value || std::is_same<Reg, avx512d>::value) avx512_utils::rswap<Item, Reg>(a0, a1); //avx512_rswap(0, 1);
 		else if constexpr (std::is_same<Reg, Item>::value) scalar_utils::swap<Reg>(a0, a1);
 		else {
-			printf("rswap not implemented\n");
+			ReportError("RSWAP not implemented");
 		}
 	}
 
@@ -283,40 +283,10 @@ namespace origami_utils {
 		else if constexpr (std::is_same<Reg, avx2>::value) return avx2_utils::get_last_item<Item, Reg>(a); 
 		else if constexpr (std::is_same<Reg, avx512>::value) return avx512_utils::get_last_item<Item, Reg>(a); 
 		else {
-			ReportError("get_last_item not implemented\n");
+			ReportError("Not implemented\n");
 		}
 	}
 
-	
-	/*
-	template <typename Reg, typename Item>
-	FORCEINLINE void transpose2(Reg& a0, Reg& a1) {
-		if constexpr (std::is_same<Reg, sse>::value || std::is_same<Reg, ssef>::value || std::is_same<Reg, ssed>::value) sse_utils::transpose<Item, Reg>(a0, a1);
-		else if constexpr (std::is_same<Reg, avx2>::value || std::is_same<Reg, avx2f>::value || std::is_same<Reg, avx2d>::value)  avx2_utils::transpose<Item, Reg>(a0, a1);
-		else if constexpr (std::is_same<Reg, avx512>::value || std::is_same<Reg, avx512f>::value || std::is_same<Reg, avx512d>::value) avx512_utils::transpose2<Item, Reg>(a0, a1);
-	}
-
-	template <typename Reg, typename Item>
-	FORCEINLINE void transpose4(Reg& a0, Reg& a1, Reg& a2, Reg& a3) {
-		if constexpr (std::is_same<Reg, sse>::value || std::is_same<Reg, ssef>::value || std::is_same<Reg, ssed>::value) sse_utils::transpose<Item, Reg>(a0, a1, a2, a3); 
-		else if constexpr (std::is_same<Reg, avx2>::value || std::is_same<Reg, avx2f>::value || std::is_same<Reg, avx2d>::value)  avx2_utils::transpose<Item, Reg>(a0, a1, a2, a3); 
-		else if constexpr (std::is_same<Reg, avx512>::value || std::is_same<Reg, avx512f>::value || std::is_same<Reg, avx512d>::value) avx512_utils::transpose4<Item, Reg>(a0, a1, a2, a3); 
-	}
-
-	template <typename Reg, typename Item>
-	FORCEINLINE void transpose8(Reg& a0, Reg& a1, Reg& a2, Reg& a3, Reg& a4, Reg& a5, Reg& a6, Reg& a7) {
-		if constexpr (std::is_same<Reg, sse>::value || std::is_same<Reg, ssef>::value || std::is_same<Reg, ssed>::value) sse_utils::transpose<Item, Reg>(a0, a1, a2, a3, a4, a5, a6, a7);
-		else if constexpr (std::is_same<Reg, avx2>::value || std::is_same<Reg, avx2f>::value || std::is_same<Reg, avx2d>::value)  avx2_utils::transpose<Item, Reg>(a0, a1, a2, a3, a4, a5, a6, a7); 
-		else if constexpr (std::is_same<Reg, avx512>::value || std::is_same<Reg, avx512f>::value || std::is_same<Reg, avx512d>::value) avx512_utils::transpose8<Item, Reg>(a0, a1, a2, a3, a4, a5, a6, a7); 
-	}
-
-	template <typename Reg, typename Item>
-	FORCEINLINE void transpose16(Reg& a0, Reg& a1, Reg& a2, Reg& a3, Reg& a4, Reg& a5, Reg& a6, Reg& a7, Reg& a8, Reg& a9, Reg& a10, Reg& a11, Reg& a12, Reg& a13, Reg& a14, Reg& a15) {
-		if constexpr (std::is_same<Reg, sse>::value || std::is_same<Reg, ssef>::value || std::is_same<Reg, ssed>::value) sse_utils::transpose16<Item, Reg>(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15); 
-		else if constexpr (std::is_same<Reg, avx2>::value || std::is_same<Reg, avx2f>::value || std::is_same<Reg, avx2d>::value)  avx2_utils::transpose16<Item, Reg>(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15);
-		else if constexpr (std::is_same<Reg, avx512>::value || std::is_same<Reg, avx512f>::value || std::is_same<Reg, avx512d>::value) avx512_utils::transpose16<Item, Reg>(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15);
-	}
-	*/
 
 	template <typename Reg, typename Item>
 	FORCEINLINE void reverse(Reg& a0) {
@@ -341,7 +311,7 @@ namespace origami_utils {
 		if constexpr (std::is_same<Reg, sse>::value || std::is_same<Reg, ssef>::value || std::is_same<Reg, ssed>::value) sse_utils::diag_exchange<Item, Reg, bits>(a0, a1);
 		else if constexpr (std::is_same<Reg, avx2>::value || std::is_same<Reg, avx2f>::value || std::is_same<Reg, avx2d>::value)  avx2_utils::diag_exchange<Item, Reg, bits>(a0, a1);
 		else if constexpr (std::is_same<Reg, avx512>::value || std::is_same<Reg, avx512f>::value || std::is_same<Reg, avx512d>::value) avx512_utils::diag_exchange<Item, Reg, bits>(a0, a1);
-		else ReportError("diag_exchange: not supported");
+		else ReportError("Not supported");
 	}
 
 	template <typename Reg, int bits>
@@ -349,9 +319,9 @@ namespace origami_utils {
 		if constexpr (std::is_same<Reg, sse>::value || std::is_same<Reg, ssef>::value || std::is_same<Reg, ssed>::value) sse_utils::shuffle<Reg, bits>(a0);
 		else if constexpr (std::is_same<Reg, avx2>::value || std::is_same<Reg, avx2f>::value || std::is_same<Reg, avx2d>::value)  avx2_utils::shuffle<Reg, bits>(a0);
 		else if constexpr (std::is_same<Reg, avx512>::value || std::is_same<Reg, avx512f>::value || std::is_same<Reg, avx512d>::value) avx512_utils::shuffle<Reg, bits>(a0);
-		else {
-			printf("Not implemented\n");
-		}
+		else 
+			ReportError("Not implemented");
+		
 	}
 
 	template <typename Item>
@@ -486,7 +456,7 @@ namespace origami_utils {
 		if constexpr (std::is_same<Reg, sse>::value || std::is_same<Reg, ssef>::value || std::is_same<Reg, ssed>::value) sse_utils::mn8_level2_shuffle<Item, Reg>(a0, a1);
 		else if constexpr (std::is_same<Reg, avx2>::value || std::is_same<Reg, avx2f>::value || std::is_same<Reg, avx2d>::value)  avx2_utils::mn8_level2_shuffle<Item, Reg>(a0, a1);
 		else if constexpr (std::is_same<Reg, avx512>::value || std::is_same<Reg, avx512f>::value || std::is_same<Reg, avx512d>::value) avx512_utils::mn8_level2_shuffle<Item, Reg>(a0, a1);
-		else ReportError("mn8_level2_shuffle: not implemented with these types");
+		else ReportError("Not implemented with these types");
 	}
 
 	template <typename Reg, typename Item>
@@ -494,7 +464,7 @@ namespace origami_utils {
 		// NOTE: need only for AVX2 and AVX512
 		if constexpr (std::is_same<Reg, avx2>::value || std::is_same<Reg, avx2f>::value || std::is_same<Reg, avx2d>::value)  avx2_utils::mn16_level1_shuffle<Item, Reg>(a0);
 		else if constexpr (std::is_same<Reg, avx512>::value || std::is_same<Reg, avx512f>::value || std::is_same<Reg, avx512d>::value) avx512_utils::mn16_level1_shuffle<Item, Reg>(a0);
-		else ReportError("mn16_level1_shuffle: not implemented with these types");
+		else ReportError("Not implemented with these types");
 	}
 
 	template <typename Reg, typename Item>
@@ -502,7 +472,7 @@ namespace origami_utils {
 		// NOTE: need only for AVX2 and AVX512
 		if constexpr (std::is_same<Reg, avx2>::value || std::is_same<Reg, avx2f>::value || std::is_same<Reg, avx2d>::value)  avx2_utils::mn16_level2_shuffle<Item, Reg>(a0, a1);
 		else if constexpr (std::is_same<Reg, avx512>::value || std::is_same<Reg, avx512f>::value || std::is_same<Reg, avx512d>::value) avx512_utils::mn16_level2_shuffle<Item, Reg>(a0, a1);
-		else ReportError("mn16_level2_shuffle: not implemented with these types");
+		else ReportError("Not implemented with these types");
 	}
 
 	template <typename Reg, typename Item>
@@ -510,10 +480,8 @@ namespace origami_utils {
 		// NOTE: need only for AVX2 and AVX512
 		if constexpr (std::is_same<Reg, avx2>::value || std::is_same<Reg, avx2f>::value || std::is_same<Reg, avx2d>::value)  avx2_utils::mn16_level3_shuffle<Item, Reg>(a0, a1);
 		else if constexpr (std::is_same<Reg, avx512>::value || std::is_same<Reg, avx512f>::value || std::is_same<Reg, avx512d>::value) avx512_utils::mn16_level3_shuffle<Item, Reg>(a0, a1);
-		else ReportError("mn16_level3_shuffle: not implemented with these types");
+		else ReportError("Not implemented with these types");
 	}
-
-
 
 	// TRANSPOSE
 	// transpose by diagonal exchange
@@ -529,7 +497,6 @@ namespace origami_utils {
 			diag_exchange<Reg, Item, bits>(a0, a1);
 		}
 	}
-
 
 	template <typename Item, typename Reg>
 	FORCEINLINE void transpose(Reg& a0, Reg& a1, Reg& a2, Reg& a3) {
@@ -554,22 +521,6 @@ namespace origami_utils {
 				diag_exchange<Reg, Item, l1bits>(_a1, _a3);
 
 				a0 = _a0; a1 = _a2; a2 = _a1; a3 = _a3;
-
-				/*
-				ssef _a0, _a1, _a2, _a3;
-				_a0 = _mm_castsi128_ps(_mm_unpacklo_epi32(a0, a1));
-				_a1 = _mm_castsi128_ps(_mm_unpackhi_epi32(a0, a1));
-				_a2 = _mm_castsi128_ps(_mm_unpacklo_epi32(a2, a3));
-				_a3 = _mm_castsi128_ps(_mm_unpackhi_epi32(a2, a3));
-
-				ssef v;
-				v = _mm_shuffle_ps(_a0, _a2, _MM_SHUFFLE(1, 0, 3, 2));
-				a0 = _mm_castps_si128(_mm_blend_ps(_a0, v, 0xC));
-				a1 = _mm_castps_si128(_mm_blend_ps(_a2, v, 3));
-
-				v = _mm_shuffle_ps(_a1, _a3, _MM_SHUFFLE(1, 0, 3, 2));
-				a2 = _mm_castps_si128(_mm_blend_ps(_a1, v, 0xC));
-				a3 = _mm_castps_si128(_mm_blend_ps(_a3, v, 3));*/
 			}
 			// 2. AVX2 + 64 bits; AVX512 + (64, 64) bits KV
 			else {
@@ -734,7 +685,7 @@ namespace origami_utils {
 		else if constexpr (items_per_reg == 16) {
 			origami_utils::transpose<Item, Reg>(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15);
 		}
-		else ReportError("transpose_large: items per reg not supported");
+		else ReportError("Items per reg not supported");
 	}
 
 	template <typename Item, typename Reg>
@@ -768,7 +719,7 @@ namespace origami_utils {
 			origami_utils::transpose<Item, Reg>(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15);
 			origami_utils::transpose<Item, Reg>(a16, a17, a18, a19, a20, a21, a22, a23, a24, a25, a26, a27, a28, a29, a30, a31);
 		}
-		else ReportError("transpose_large: items per reg not supported");
+		else ReportError("Items per reg not supported");
 	}
 
 
@@ -812,69 +763,5 @@ namespace origami_utils {
 		origami_utils::print<Reg, Item>(a28); origami_utils::print<Reg, Item>(a29);
 		origami_utils::print<Reg, Item>(a30); origami_utils::print<Reg, Item>(a31);
 	}
-
-
-	// template instantiation
-	template FORCEINLINE void load(sse&, sse*);
-	template FORCEINLINE void load(ssef&, ssef*);
-	template FORCEINLINE void load(avx2&, avx2*);
-	template FORCEINLINE void load(avx2f&, avx2f*);
-	template FORCEINLINE void load(avx512&, avx512*);
-	template FORCEINLINE void load(avx512f&, avx512f*);
-
-
-	template FORCEINLINE void store(sse, sse*);
-	template FORCEINLINE void store(ssef, ssef*);
-	template FORCEINLINE void store(avx2, avx2*);
-	template FORCEINLINE void store(avx2f, avx2f*);
-	template FORCEINLINE void store(avx512, avx512*);
-	template FORCEINLINE void store(avx512f, avx512f*);
-
-	template FORCEINLINE void rswap<sse, ui>(sse&, sse&);
-	template FORCEINLINE void rswap<ssef, float>(ssef&, ssef&);
-	template FORCEINLINE void rswap<sse, i64>(sse&, sse&);
-	template FORCEINLINE void rswap<ssed, double>(ssed&, ssed&);
-	template FORCEINLINE void rswap<sse, KeyValue<i64, i64>>(sse&, sse&);
-
-	template FORCEINLINE void rswap<avx2, ui>(avx2&, avx2&);
-	template FORCEINLINE void rswap<avx2f, float>(avx2f&, avx2f&);
-	template FORCEINLINE void rswap<avx2, i64>(avx2&, avx2&);
-	template FORCEINLINE void rswap<avx2d, double>(avx2d&, avx2d&);
-	template FORCEINLINE void rswap<avx2, KeyValue<i64, i64>>(avx2&, avx2&);
-
-	template FORCEINLINE void rswap<avx512, ui>(avx512&, avx512&);
-	template FORCEINLINE void rswap<avx512f, float>(avx512f&, avx512f&);
-	template FORCEINLINE void rswap<avx512, i64>(avx512&, avx512&);
-	template FORCEINLINE void rswap<avx512d, double>(avx512d&, avx512d&);
-	template FORCEINLINE void rswap<avx512, KeyValue<i64, i64>>(avx512&, avx512&);
-
-	template FORCEINLINE void init_reg<sse>(sse&);
-	template FORCEINLINE void init_reg<ssef>(ssef&);
-	template FORCEINLINE void init_reg<avx2>(avx2&);
-	template FORCEINLINE void init_reg<avx2f>(avx2f&);
-	template FORCEINLINE void init_reg<avx512>(avx512&);
-	template FORCEINLINE void init_reg<avx512f>(avx512f&);
-
-	template void random_writer<ui>(ui*, ui64);
-	template void random_writer<ui64>(ui64*, ui64);
-	template void random_writer<int>(int*, ui64);
-	template void random_writer<float>(float*, ui64);
-	template void random_writer<i64>(i64*, ui64);
-	template void random_writer<double>(double*, ui64);
-	template void random_writer<KeyValue<ui, ui>>(KeyValue<ui, ui>*, ui64);
-	template void random_writer<KeyValue<i64, i64>>(KeyValue<i64, i64>*, ui64);
-	template void random_writer<KeyValue<ui64, ui64>>(KeyValue<ui64, ui64>*, ui64);
-
-	template void print_arr<ui>(ui*, ui64);
-	template void print_arr<int>(int*, ui64);
-	template void print_arr<float>(float*, ui64);
-	template void print_arr<i64>(i64*, ui64);
-	template void print_arr<double>(double*, ui64);
-	template void print_arr<KeyValue<ui, ui>>(KeyValue<ui, ui>*, ui64);
-	template void print_arr<KeyValue<i64, i64>>(KeyValue<i64, i64>*, ui64);
-
-	template void pareto_writer<ui64>(ui64*, ui64, int);
-
-
 #undef _DEBUG
 }

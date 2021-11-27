@@ -3,8 +3,8 @@
 
 #define L2_BYTES MB(1)
 
-#define REG_TYPE 3		// 0: scalar, 1,2,3: sse, avx2, avx512
-#define KEY_TYPE 2		// 0: 32, 1: 64, 2: 64+64
+#define REG_TYPE 2		// 0: scalar, 1,2,3: sse, avx2, avx512
+#define KEY_TYPE 0		// 0: 32, 1: 64, 2: 64+64
 
 /**
 *	Required parameters -----------------------
@@ -250,8 +250,7 @@
 
 
 
-// merge-tree 
-#define MTREE_VECTORIZED			
+// merge-tree 	
 #define MTREE_NREG			1			
 #define MTREE_MAX_LEVEL		11
 #define MTREE_MAX_WAY		2048

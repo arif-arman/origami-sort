@@ -25,7 +25,6 @@ bool SortCorrectnessChecker(Item* data, uint32_t n) {
 		}
 	}
 	return true;
-	
 }
 
 template <typename Item>

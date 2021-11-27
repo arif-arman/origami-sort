@@ -37,7 +37,7 @@ namespace sse_utils {
 			printf("%f\n", _mm_extract_ps(a0, 3));
 		}
 		else {
-			printf("> Not implemented\n");
+			ReportError("Not implemented\n");
 		}
 	}
 
@@ -171,7 +171,7 @@ namespace sse_utils {
 			cast_reg<Reg, ssef>(a0, _a0);
 			cast_reg<Reg, ssef>(a1, _a1);
 		}
-		else ReportError("avx2 diag_exchange: only supports 32 and 64 bits");
+		else ReportError("Only supports 32 and 64 bits");
 #undef v1
 	}
 
@@ -186,7 +186,7 @@ namespace sse_utils {
 			a0 = _mm_shuffle_epi32(a0, SHUFF_64_CONST);
 		}
 		else {
-			printf("> Works only with 32 and 64 bits\n");
+			ReportError("Works only with 32 and 64 bits\n");
 		}
 	}
 
@@ -313,7 +313,7 @@ namespace sse_utils {
 			a1 = _mm_blend_epi16(v1, v0, 0xC);
 		}
 		else 
-			ReportError("mn8_level2_shuffle: works only for int 32 bits\n");
+			ReportError("Works only for int 32 bits\n");
 	}
 
 
@@ -330,132 +330,4 @@ namespace sse_utils {
 			return x;
 		}
 	}
-
-
-
-	// old code dump
-	// TRANSPOSE
-	/*
-	template <typename Item, typename Reg>
-	FORCEINLINE void transpose(Reg& a0, Reg& a1) {			// 2x2 matrix
-		diag_exchange<Item, Reg, sizeof(Item)>(a0, a1);
-	}
-
-	template <typename Item, typename Reg>
-	FORCEINLINE void transpose(Reg& a0, Reg& a1, Reg& a2, Reg& a3) {	// 4x4 matrix
-
-		if constexpr (sizeof(Item) == 4) {		// 32-bit in SSE reg
-			ssef _a0, _a1, _a2, _a3;
-			_a0 = _mm_castsi128_ps(_mm_unpacklo_epi32(a0, a1));
-			_a1 = _mm_castsi128_ps(_mm_unpackhi_epi32(a0, a1));
-			_a2 = _mm_castsi128_ps(_mm_unpacklo_epi32(a2, a3));
-			_a3 = _mm_castsi128_ps(_mm_unpackhi_epi32(a2, a3));
-
-			ssef v;
-			v = _mm_shuffle_ps(_a0, _a2, _MM_SHUFFLE(1, 0, 3, 2));
-			a0 = _mm_castps_si128(_mm_blend_ps(_a0, v, 0xC));
-			a1 = _mm_castps_si128(_mm_blend_ps(_a2, v, 3));
-
-			v = _mm_shuffle_ps(_a1, _a3, _MM_SHUFFLE(1, 0, 3, 2));
-			a2 = _mm_castps_si128(_mm_blend_ps(_a1, v, 0xC));
-			a3 = _mm_castps_si128(_mm_blend_ps(_a3, v, 3));
-		}
-		else if constexpr (sizeof(Item) == 8) {		// 64-bit in SSE reg
-			Reg _a0 = _mm_unpacklo_epi64(a0, a1);
-			Reg _a1 = _mm_unpackhi_epi64(a0, a1);
-			Reg _a2 = _mm_unpacklo_epi64(a2, a3);
-			Reg _a3 = _mm_unpackhi_epi64(a2, a3);
-			a0 = _a0; a1 = _a1; a2 = _a2; a3 = _a3;
-		}
-
-	}
-
-	// won't be used in SSE
-	template <typename Item, typename Reg>
-	FORCEINLINE void transpose(Reg& a0, Reg& a1, Reg& a2, Reg& a3, Reg& a4, Reg& a5, Reg& a6, Reg& a7) {
-		if constexpr (sizeof(Item) == 4) {		// 32-bit in SSE reg
-			ssef _a0, _a1, _a2, _a3, _a4, _a5, _a6, _a7;
-			_a0 = _mm_castsi128_ps(_mm_unpacklo_epi32(a0, a1));
-			_a1 = _mm_castsi128_ps(_mm_unpackhi_epi32(a0, a1));
-			_a2 = _mm_castsi128_ps(_mm_unpacklo_epi32(a2, a3));
-			_a3 = _mm_castsi128_ps(_mm_unpackhi_epi32(a2, a3));
-
-			ssef v0, v1;
-			v0 = _mm_shuffle_ps(_a0, _a2, _MM_SHUFFLE(1, 0, 3, 2));
-			a0 = _mm_castps_si128(_mm_blend_ps(_a0, v0, 0xC));
-			a1 = _mm_castps_si128(_mm_blend_ps(_a2, v0, 3));
-
-			v0 = _mm_shuffle_ps(_a1, _a3, _MM_SHUFFLE(1, 0, 3, 2));
-			a2 = _mm_castps_si128(_mm_blend_ps(_a1, v0, 0xC));
-			a3 = _mm_castps_si128(_mm_blend_ps(_a3, v0, 3));
-
-			_a4 = _mm_castsi128_ps(_mm_unpacklo_epi32(a4, a5));
-			_a5 = _mm_castsi128_ps(_mm_unpackhi_epi32(a4, a5));
-			_a6 = _mm_castsi128_ps(_mm_unpacklo_epi32(a6, a7));
-			_a7 = _mm_castsi128_ps(_mm_unpackhi_epi32(a6, a7));
-
-			v1 = _mm_shuffle_ps(_a4, _a6, _MM_SHUFFLE(1, 0, 3, 2));
-			a4 = _mm_castps_si128(_mm_blend_ps(_a4, v1, 0xC));
-			a5 = _mm_castps_si128(_mm_blend_ps(_a6, v1, 3));
-
-			v1 = _mm_shuffle_ps(_a5, _a7, _MM_SHUFFLE(1, 0, 3, 2));
-			a6 = _mm_castps_si128(_mm_blend_ps(_a5, v1, 0xC));
-			a7 = _mm_castps_si128(_mm_blend_ps(_a7, v1, 3));
-		}
-		else if constexpr (sizeof(Item) == 8) {		// 64-bit in SSE reg
-			Reg _a0 = _mm_unpacklo_epi64(a0, a1);
-			Reg _a1 = _mm_unpackhi_epi64(a0, a1);
-			Reg _a2 = _mm_unpacklo_epi64(a2, a3);
-			Reg _a3 = _mm_unpackhi_epi64(a2, a3);
-			a0 = _a0; a1 = _a1; a2 = _a2; a3 = _a3;
-
-			Reg _a4 = _mm_unpacklo_epi64(a4, a5);
-			Reg _a5 = _mm_unpackhi_epi64(a4, a5);
-			Reg _a6 = _mm_unpacklo_epi64(a6, a7);
-			Reg _a7 = _mm_unpackhi_epi64(a6, a7);
-			a4 = _a4; a5 = _a5; a6 = _a6; a7 = _a7;
-		}
-	}
-	*/
-
-
-
-
-
-	// instantiation
-	template FORCEINLINE sse _min<ui, sse>(sse, sse);
-	template FORCEINLINE sse _min<int, sse>(sse, sse);
-	template FORCEINLINE ssef _min<float, ssef>(ssef, ssef);
-	template FORCEINLINE ssed _min<double, ssed>(ssed, ssed);
-
-	template FORCEINLINE sse _max<ui, sse>(sse, sse);
-	template FORCEINLINE sse _max<int, sse>(sse, sse);
-	template FORCEINLINE ssef _max<float, ssef>(ssef, ssef);
-	template FORCEINLINE ssed _max<double, ssed>(ssed, ssed);
-
-	template FORCEINLINE void reverse<ui, sse>(sse&);
-	template FORCEINLINE void reverse<int, sse>(sse&);
-	template FORCEINLINE void reverse<float, ssef>(ssef&);
-	template FORCEINLINE void reverse<int64_t, sse>(sse&);
-	template FORCEINLINE void reverse<double, ssed>(ssed&);
-
-	template FORCEINLINE void swap<ui>(sse&, sse&);
-	template FORCEINLINE void swap<int>(sse&, sse&);
-	template FORCEINLINE void swap<float>(ssef&, ssef&);
-	template FORCEINLINE void swap<i64>(sse&, sse&);
-	template FORCEINLINE void swap<double>(ssed&, ssed&);
-	template FORCEINLINE void swap<KeyValue<i64, i64>>(sse&, sse&);
-
-	template FORCEINLINE sse alignr<sse, 4>(sse);
-	template FORCEINLINE sse alignr<sse, 8>(sse);
-	template FORCEINLINE ssef alignr<ssef, 4>(ssef);
-	template FORCEINLINE ssed alignr<ssed, 8>(ssed);
-
-	template FORCEINLINE void rswap<ui, sse>(sse&, sse&);
-	template FORCEINLINE void rswap<int, sse>(sse&, sse&);
-	template FORCEINLINE void rswap<float, ssef>(ssef&, ssef&);
-	template FORCEINLINE void rswap<int64_t, sse>(sse&, sse&);
-	template FORCEINLINE void rswap<double, ssed>(ssed&, ssed&);
-	template FORCEINLINE void rswap<KeyValue<i64, i64>, sse>(sse&, sse&);
-
 }

@@ -120,7 +120,6 @@ namespace avx512_utils {
 		}
 	}
 	
-
 	// MAX
 	template <typename Item, typename Reg>
 	FORCEINLINE Reg _max(Reg a0, Reg a1) {
@@ -203,28 +202,24 @@ namespace avx512_utils {
 		if constexpr (sizeof(Item) == 4) {
 			const ui mask1 = 0;
 			const ui mask2 = 0xFFFF;
-			//Reg aux = _mm512_shuffle_i64x2(a0, a0, _MM_PERM_BADC);
 			Reg aux = a0;
 			shuffle<Reg, 256>(aux);
 
 			a0 = mask_min<Item, Reg>(a0, aux, 0b0000000011111111 ^ mask1);
 			a0 = mask_max<Item, Reg>(a0, aux, 0b0000000011111111 ^ mask2);
 
-			//aux = _mm512_shuffle_i64x2(a0, a0, _MM_PERM_CDAB);
 			aux = a0;
 			shuffle<Reg, 128>(aux);
 
 			a0 = mask_min<Item, Reg>(a0, aux, 0b0000111100001111 ^ mask1);
 			a0 = mask_max<Item, Reg>(a0, aux, 0b0000111100001111 ^ mask2);
 
-			//aux = _mm512_shuffle_epi32(a0, _MM_PERM_BADC);
 			aux = a0;
 			shuffle<Reg, 64>(aux);
 
 			a0 = mask_min<Item, Reg>(a0, aux, 0b0011001100110011 ^ mask1);
 			a0 = mask_max<Item, Reg>(a0, aux, 0b0011001100110011 ^ mask2);
 
-			//aux = _mm512_shuffle_epi32(a0, _MM_PERM_CDAB);
 			aux = a0;
 			shuffle<Reg, 32>(aux);
 
@@ -233,19 +228,16 @@ namespace avx512_utils {
 		}
 		else if constexpr (sizeof(Item) == 8) {
 			const ui mask2_64 = 0xFF;
-			//Reg aux = _mm512_shuffle_i64x2(a0, a0, _MM_PERM_BADC);
 			Reg aux = a0;
 			shuffle<Reg, 256>(aux);
 			a0 = mask_min<Item, Reg>(a0, aux, 0b00001111 ^ mask1);
 			a0 = mask_max<Item, Reg>(a0, aux, 0b00001111 ^ mask2);
 
-			//aux = _mm512_shuffle_i64x2(a0, a0, _MM_PERM_CDAB);
 			aux = a0;
 			shuffle<Reg, 128>(aux);
 			a0 = mask_min<Item, Reg>(a0, aux, 0b00110011 ^ mask1);
 			a0 = mask_max<Item, Reg>(a0, aux, 0b00110011 ^ mask2);
 
-			//aux = _mm512_shuffle_epi32(a0, _MM_PERM_BADC);
 			aux = a0;
 			shuffle<Reg, 64>(aux);
 			a0 = mask_min<Item, Reg>(a0, aux, 0b01010101 ^ mask1);
@@ -366,7 +358,7 @@ namespace avx512_utils {
 			cast_reg<Reg, avx512d>(a0, _a0);
 			cast_reg<Reg, avx512d>(a1, _a1);
 		}
-		else ReportError("avx512 diag_exchange: only supports 32, 64, 128 and 256 bits");
+		else ReportError("Only supports 32, 64, 128 and 256 bits");
 #undef v0
 	}
 
@@ -538,7 +530,7 @@ namespace avx512_utils {
 			a1 = _mm512_mask_blend_epi64(0xC, v1, v0);
 		}
 		else 
-			ReportError("mn8_level2_shuffle: works only for int 32, 64, and 64 + 64 bits");
+			ReportError("Works only for int 32, 64, and 64 + 64 bits");
 		
 	}
 
@@ -549,7 +541,7 @@ namespace avx512_utils {
 		else if constexpr (sizeof(Item) == 8)
 			a0 = _mm512_permutexvar_epi64(MN16_LEVEL1_PERM_CONST_64, a0);
 		else
-			ReportError("mn16_level1_shuffle: works only for 32 and 64 bits");
+			ReportError("Works only for 32 and 64 bits");
 	}
 
 	template <typename Item, typename Reg>
@@ -571,7 +563,7 @@ namespace avx512_utils {
 			a1 = _mm512_mask_blend_epi64(0x30, a1, v0);
 		}
 		else
-			ReportError("mn16_level2_shuffle: works only for int 32 and 64 bits");
+			ReportError("Works only for int 32 and 64 bits");
 	}
 
 	template <typename Item, typename Reg>
@@ -593,7 +585,7 @@ namespace avx512_utils {
 			a1 = _mm512_mask_blend_epi64(0x2A, a1, v0);
 		}
 		else
-			ReportError("mn16_level3_shuffle: works only for int 32 and 64 bits");
+			ReportError("Works only for int 32 and 64 bits");
 	}
 
 
@@ -611,71 +603,4 @@ namespace avx512_utils {
 			return x;
 		}
 	}
-
-
-	// template instantiation
-	template FORCEINLINE avx512 _min<ui, avx512>(avx512, avx512);
-	template FORCEINLINE avx512 _min<int, avx512>(avx512, avx512);
-	template FORCEINLINE avx512 _min<int64_t, avx512>(avx512, avx512);
-	template FORCEINLINE avx512 _min<KeyValue<i64, i64>, avx512>(avx512, avx512);
-	template FORCEINLINE avx512f _min<float, avx512f>(avx512f, avx512f);
-	template FORCEINLINE avx512d _min<double, avx512d>(avx512d, avx512d);
-
-	template FORCEINLINE avx512 _max<ui, avx512>(avx512, avx512);
-	template FORCEINLINE avx512 _max<int, avx512>(avx512, avx512);
-	template FORCEINLINE avx512 _max<int64_t, avx512>(avx512, avx512);
-	template FORCEINLINE avx512 _max<KeyValue<i64, i64>, avx512>(avx512, avx512);
-	template FORCEINLINE avx512f _max<float, avx512f>(avx512f, avx512f);
-	template FORCEINLINE avx512d _max<double, avx512d>(avx512d, avx512d);
-
-	template FORCEINLINE void reverse<ui, avx512>(avx512&);
-	template FORCEINLINE void reverse<int, avx512>(avx512&);
-	template FORCEINLINE void reverse<float, avx512f>(avx512f&);
-	template FORCEINLINE void reverse<int64_t, avx512>(avx512&);
-	template FORCEINLINE void reverse<double, avx512d>(avx512d&);
-	template FORCEINLINE void reverse<KeyValue<i64, i64>, avx512>(avx512&);
-
-	template FORCEINLINE avx512 mask_min<ui, avx512>(avx512, avx512, ui64);
-	template FORCEINLINE avx512 mask_min<int, avx512>(avx512, avx512, ui64);
-	template FORCEINLINE avx512f mask_min<float, avx512f>(avx512f, avx512f, ui64);
-	template FORCEINLINE avx512 mask_min<int64_t, avx512>(avx512, avx512, ui64);
-	template FORCEINLINE avx512d mask_min<double, avx512d>(avx512d, avx512d, ui64);
-
-	template FORCEINLINE avx512 mask_max<ui, avx512>(avx512, avx512, ui64);
-	template FORCEINLINE avx512 mask_max<int, avx512>(avx512, avx512, ui64);
-	template FORCEINLINE avx512f mask_max<float, avx512f>(avx512f, avx512f, ui64);
-	template FORCEINLINE avx512 mask_max<int64_t, avx512>(avx512, avx512, ui64);
-	template FORCEINLINE avx512d mask_max<double, avx512d>(avx512d, avx512d, ui64);
-
-	template FORCEINLINE void  shuffle<avx512, 256>(avx512&);
-	template FORCEINLINE void shuffle<avx512f, 256>(avx512f&);
-	template FORCEINLINE void shuffle<avx512d, 256>(avx512d&);
-	template FORCEINLINE void  shuffle<avx512, 128>(avx512&);
-	template FORCEINLINE void shuffle<avx512f, 128>(avx512f&);
-	template FORCEINLINE void shuffle<avx512d, 128>(avx512d&);
-	template FORCEINLINE void  shuffle<avx512, 64>(avx512&);
-	template FORCEINLINE void shuffle<avx512f, 64>(avx512f&);
-	template FORCEINLINE void shuffle<avx512d, 64>(avx512d&);
-	template FORCEINLINE void  shuffle<avx512, 32>(avx512&);
-	template FORCEINLINE void shuffle<avx512f, 32>(avx512f&);
-
-	template FORCEINLINE void sort_reg<ui, avx512>(avx512&);
-	template FORCEINLINE void sort_reg<int, avx512>(avx512&);
-	template FORCEINLINE void sort_reg<float, avx512f>(avx512f&);
-	template FORCEINLINE void sort_reg<int64_t, avx512>(avx512&);
-	template FORCEINLINE void sort_reg<double, avx512d>(avx512d&);
-
-	template FORCEINLINE void swap<ui>(avx512&, avx512&);
-	template FORCEINLINE void swap<int>(avx512&, avx512&);
-	template FORCEINLINE void swap<float>(avx512f&, avx512f&);
-	template FORCEINLINE void swap<int64_t>(avx512&, avx512&);
-	template FORCEINLINE void swap<double>(avx512d&, avx512d&);
-	template FORCEINLINE void swap<KeyValue<i64, i64>, avx512>(avx512&, avx512&);
-
-	template FORCEINLINE void rswap<ui, avx512>(avx512&, avx512&);
-	template FORCEINLINE void rswap<int, avx512>(avx512&, avx512&);
-	template FORCEINLINE void rswap<float, avx512f>(avx512f&, avx512f&);
-	template FORCEINLINE void rswap<int64_t, avx512>(avx512&, avx512&);
-	template FORCEINLINE void rswap<double, avx512d>(avx512d&, avx512d&);
-	template FORCEINLINE void rswap<KeyValue<i64, i64>, avx512>(avx512&, avx512&);
 }
