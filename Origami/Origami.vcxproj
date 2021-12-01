@@ -151,7 +151,7 @@
     <ClInclude Include="merge_networks.h" />
     <ClInclude Include="merge_tree.h" />
     <ClInclude Include="merge_utils.h" />
-    <ClInclude Include="Partition.h" />
+    <ClInclude Include="partition.h" />
     <ClInclude Include="commons.h" />
     <ClInclude Include="scalar_utils.h" />
     <ClInclude Include="sorter.h" />

@@ -33,7 +33,7 @@
     <ClInclude Include="commons.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Partition.h">
+    <ClInclude Include="partition.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="merger.h">
