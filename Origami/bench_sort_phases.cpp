@@ -438,7 +438,7 @@ public:
 		Item* d = new Item[n];
 		Reg* d2 = (Reg*)d;
 		datagen::random_writer<Item>(d, n);
-		SortEvery<Item>(d, n, per_n_half);
+		sort_every<Item>(d, n, per_n_half);
 
 		printf("Merging in-register: reg %u, unroll %u, merge: %u x %u ...", NREG, UNROLL, per_n_half, per_n_half);
 
@@ -607,7 +607,7 @@ public:
 		printf("elapsed: %.2f s @ %.2f M/s\n", el, double(iter * n) / el / 1e6);
 
 		FOR(i, n, per_n)
-			SortCorrectnessChecker<Item>(d + i, per_n);
+			sort_correctness_checker<Item>(d + i, per_n);
 
 		if (d[3] & 0x123 == 0) printf("%llu %llu\n", d[3], d[11]);
 		delete[] d;
@@ -820,7 +820,7 @@ public:
 		Item* data = new Item[n];
 		origami_utils::random_writer<Item>(data, n);
 		// prepare for merge --> sort every W (SIMD width) keys
-		SortEvery<Item>(data, n, ItemsPerReg);
+		sort_every<Item>(data, n, ItemsPerReg);
 		constexpr ui64 repeat = 1e9;
 
 		if constexpr (NREG == 16) {
@@ -1032,7 +1032,7 @@ public:
 		// check correctness of sort
 		// NOTE: this is only valid if we are sorting the entire matrix
 		printf("Checking sort correctness ... ");
-		SortCorrectnessCheckerSTD<Item>(data, back, N);
+		sort_correctness_checker_std<Item>(data, back, N);
 		printf("done\n");
 
 		delete[] data;
@@ -1059,7 +1059,7 @@ public:
 		memcpy(sorted, data, TOT_N * Itemsize);
 
 		//printf("Running std::sort on backup data ... ");
-		SortEvery(sorted, TOT_N, N);
+		sort_every(sorted, TOT_N, N);
 		//printf("done\n");
 
 		hrc::time_point st, en;
@@ -1084,13 +1084,13 @@ public:
 		printf("Checking sort correctness ... ");
 		FOR(i, TOT_N, N) {
 			if constexpr (full_mat) {
-				if (SortCorrectnessCheckerSTD<Item>(data + i, sorted + i, N) == false) {
+				if (sort_correctness_checker_std<Item>(data + i, sorted + i, N) == false) {
 					ReportError("Correctness error");
 					break;
 				}
 			}
 			else {
-				if (SortCorrectnessChecker<Item>(data + i, N) == false) {
+				if (sort_correctness_checker<Item>(data + i, N) == false) {
 					ReportError("Correctness error");
 					break;
 				}
@@ -1345,7 +1345,7 @@ void sort_sliding_test(ui64 sort_n = 64, ui writer_type = 1) {
 	Item* sorted = (Item*)VirtualAlloc(NULL, size, MEM_COMMIT, PAGE_READWRITE); //nullptr; // 
 	memcpy(sorted, data, size);
 	hrc::time_point st1 = hrc::now();
-	SortEvery(sorted, n_items, sort_n);
+	sort_every(sorted, n_items, sort_n);
 	//SortEvery(data, n_items, sort_n);
 	hrc::time_point en1 = hrc::now();
 	printf("done\n");
@@ -1387,7 +1387,7 @@ void sort_sliding_test(ui64 sort_n = 64, ui writer_type = 1) {
 		printf("Iter %3lu done, checking correctness w/ std::sort ... ", i);
 		Item* p = o; Item* pEnd = o + n_items; Item* p_sorted = sorted;
 		while (p < pEnd) {
-			if (!SortCorrectnessCheckerSTD(p, p_sorted, sort_n)) {
+			if (!sort_correctness_checker_std(p, p_sorted, sort_n)) {
 				printf("Correctness error @ %llu\n", i);
 				exit(1);
 			}
@@ -1398,7 +1398,7 @@ void sort_sliding_test(ui64 sort_n = 64, ui writer_type = 1) {
 		Item* p = o;
 		Item* pEnd = p + n_items;
 		while (p < pEnd) {
-			if (!SortCorrectnessChecker(p, sort_n)) {
+			if (!sort_correctness_checker(p, sort_n)) {
 				printf("Correctness error @ %llu\n", i);
 				break;
 				//system("pause");
@@ -1594,9 +1594,9 @@ void phase4_sortN_test(int argc, char** argv) {
 	FOR(i, n_items, n_per_thread) SortCorrectnessChecker<Item>(out + i, n_per_thread);*/
 
 #ifdef STD_CORRECTNESS
-	SortCorrectnessCheckerSTD<Item>(out, d_sorted, n_items);
+	sort_correctness_checker_std<Item>(out, d_sorted, n_items);
 #else 
-	SortCorrectnessChecker<Item>(out, n_items);
+	sort_correctness_checker<Item>(out, n_items);
 #endif 
 	printf("done\n");
 

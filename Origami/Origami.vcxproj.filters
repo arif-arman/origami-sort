@@ -57,9 +57,6 @@
     <ClInclude Include="avx2_utils.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="external_sorter.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="bench_sort.cpp">
@@ -69,9 +66,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="bench_bmerge.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="bench_external_sort.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="bench_sort_phases.cpp">

@@ -66,7 +66,7 @@ void mtree_single_thread(ui writer_type = 1, ui K = 2, ui l1_buff_n = 32, ui l2_
 
 	datagen::Writer<Item> writer;
 	writer.generate(A, tot_n, writer_type);
-	SortEvery<Item>(A, tot_n, chunk);			
+	sort_every<Item>(A, tot_n, chunk);			
 
 	// print setup details
 	printf("Way: %u, # Keys: %llu, Chunk: %llu, Threads: %d, L1 buff: %u, L2 buff: %u \n", K, tot_n, chunk, 1, l1_buff_n, l2_buff_n);
@@ -94,7 +94,7 @@ void mtree_single_thread(ui writer_type = 1, ui K = 2, ui l1_buff_n = 32, ui l2_
 	// merge correctness check
 	if constexpr (std_correctness) {
 		printf("Checking correctness ... ");
-		SortCorrectnessCheckerSTD<Item>(C, A_ref, tot_n);			
+		sort_correctness_checker_std<Item>(C, A_ref, tot_n);			
 		printf("done\n");
 		VFREE(A_ref);
 	}
@@ -229,14 +229,14 @@ void mtree_multi_thread(ui n_threads, ui n_cores, int choice = 0, ui writer_type
 
 	datagen::Writer<Item> writer;
 	writer.generate(A, tot_n, writer_type);
-	SortEvery<Item>(A, tot_n, chunk);			
+	sort_every<Item>(A, tot_n, chunk);			
 
 	if constexpr (std_correctness) {
 		printf("Preparing std::sort reference ... ");
 		A_ref = (Item*)VALLOC(size);
 		memcpy(A_ref, A, size);
 		if (choice == 3) std::sort(A_ref, A_ref + tot_n);		
-		else SortEvery<Item>(A_ref, tot_n, chunk << 1);
+		else sort_every<Item>(A_ref, tot_n, chunk << 1);
 		printf("done\n");
 	}
 
@@ -270,7 +270,7 @@ void mtree_multi_thread(ui n_threads, ui n_cores, int choice = 0, ui writer_type
 	// merge correctness check
 	if constexpr (std_correctness) {
 		printf("Checking correctness ... ");
-		SortCorrectnessCheckerSTD<Item>(C, A_ref, tot_n);
+		sort_correctness_checker_std<Item>(C, A_ref, tot_n);
 		printf("done\n");
 		VFREE(A_ref);
 	}

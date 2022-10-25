@@ -44,12 +44,12 @@ void bmerge(ui writer_type = 1) {
 	datagen::Writer<Item>  writer;
 	writer.generate(A, n, writer_type);
 	memset(C, 0, sz);
-	SortEvery(A, n, chunk);	
+	sort_every(A, n, chunk);	
 
 #ifdef STD_CORRECTNESS
 	Item* S = (Item*)VALLOC(sz);
 	memcpy(S, A, sz);
-	SortEvery<Item>(S, n, chunk << 1);
+	sort_every<Item>(S, n, chunk << 1);
 #endif 
 
 	printf("Reg: %u, Key: %u, NREG: %u, UNROLL: %u\n", sizeof(Reg) << 3, Itemsize << 3, NREG, UNROLL);
@@ -104,10 +104,10 @@ void bmerge(ui writer_type = 1) {
 
 	printf("Checking correcntess ... ");
 #ifdef STD_CORRECTNESS
-		SortCorrectnessCheckerSTD<Item>(C, S, n);
+		sort_correctness_checker_std<Item>(C, S, n);
 #else 
 	FOR(i, UNROLL, 1)
-		SortCorrectnessChecker(C + i * (chunk << 1), (chunk << 1));
+		sort_correctness_checker(C + i * (chunk << 1), (chunk << 1));
 #endif
 	printf("done\n");
 

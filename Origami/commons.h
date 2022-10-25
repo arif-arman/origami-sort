@@ -53,6 +53,7 @@ template <typename Keytype, typename Valuetype>
 struct KeyValue {
 	Keytype key;
 	Valuetype value;
+	// NOTE: operator overloads not used in origami for KV pair as it is slow; used mainly for correctness checking with std::sort 
 	bool operator <(const KeyValue& kv) const {
 		return key < kv.key;
 	}

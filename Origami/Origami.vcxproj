@@ -146,7 +146,6 @@
     <ClInclude Include="avx2_utils.h" />
     <ClInclude Include="avx512_utils.h" />
     <ClInclude Include="config.h" />
-    <ClInclude Include="external_sorter.h" />
     <ClInclude Include="merger.h" />
     <ClInclude Include="merge_networks.h" />
     <ClInclude Include="merge_tree.h" />
@@ -162,10 +161,6 @@
   <ItemGroup>
     <ClCompile Include="bench_bmerge.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="bench_external_sort.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
     </ClCompile>

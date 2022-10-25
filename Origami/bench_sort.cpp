@@ -70,7 +70,7 @@ void sort_bench(ui writer_type, int argc, char** argv) {
 	Item* sorted = (Item*)VirtualAlloc(NULL, size, MEM_COMMIT, PAGE_READWRITE); 
 	memcpy(sorted, data, size);
 	hrc::time_point st1 = hrc::now();
-	SortEvery(sorted, n_items, n_items);
+	sort_every(sorted, n_items, n_items);
 	hrc::time_point en1 = hrc::now();
 	printf("done, ");
 	double el1 = ELAPSED_MS(st1, en1);
@@ -110,13 +110,13 @@ void sort_bench(ui writer_type, int argc, char** argv) {
 
 #ifdef STD_CORRECTNESS
 		printf("Iter %3lu done, checking correctness w/ std::sort ... ", i);
-		if (!SortCorrectnessCheckerSTD(o, sorted, n_items)) {
+		if (!sort_correctness_checker_std(o, sorted, n_items)) {
 			printf("Correctness error @ %llu\n", i);
 			exit(1);
 		}
 		printf("done\r                                                                    \r");
 #else 
-		if (!SortCorrectnessChecker(o, n_items)) {
+		if (!sort_correctness_checker(o, n_items)) {
 			printf("Correctness error @ %llu\n", i);
 			//break;
 			//system("pause");
